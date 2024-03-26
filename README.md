@@ -1,5 +1,5 @@
 # streetleague_rotorhazard_plugin
-This plugin adds a heat generator for the Street League points format. It also adds a ranking method called Total Stage Points. 
+This plugin adds a heat generator for the Street League points format. It also adds a ranking method called Total Stage Points. Currently, it requires that you be on the main branch of RotorHazard core.
 
 ## how the points format works
 Similar to Mario Kart, pilots earn points by setting the fastest time they can in each stage; 1pt for every competitor they beat. After each stage, the next stage is seeded based on pilots' total points, keeping rivals in the same heat. The pilot who earns the most points after all stages are complete wins.
