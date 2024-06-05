@@ -233,7 +233,8 @@ def StreetLeaguePointsGenerator(rhapi, args):
     heatLetters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
     heatLetterStartIndex = math.ceil(totalPilotsToSeed/availableSeats)-1
     seatsToSkip = availableSeats-(totalPilotsToSeed % availableSeats)
-    
+    if(seatsToSkip>=availableSeats):
+            seatsToSkip = 0
     log("Generate Points Race")
     generatedHeatPlans = []
 
@@ -241,6 +242,8 @@ def StreetLeaguePointsGenerator(rhapi, args):
         log(" - Stage "+str(stage))
         pilotsLeftToSeed = totalPilotsToSeed
         seatsToSkip = availableSeats-(totalPilotsToSeed % availableSeats)
+        if(seatsToSkip>=availableSeats):
+            seatsToSkip = 0
         for h in range(0,len(heatLetters)):
             heat = heatLetters[heatLetterStartIndex-h]
             if(pilotsLeftToSeed>0):
@@ -324,9 +327,9 @@ def applyStages(args):
         rhapi = args.get("rhapi")
 
         #set the class ranking method to Total Stage Points
-        pointsDescription = "Similar to Mario Kart, pilots earn points by setting the fastest time they can in each stage; 1pt for every competitor they beat. After each stage, the next stage is seeded based pilots total points, keeping rivals in the same heat. The pilot who earns the most points after all stages are complete wins.\nIMPORTANT: Please remember to seed all heats in the next stage after the current stage is complete."
+        pointsDescription = "Similar to Mario Kart, pilots earn points by setting the fastest time they can in each stage; 1pt for every competitor they beat. After each stage, the next stage is seeded based on pilots' total points, keeping rivals in the same heat. The pilot who earns the most points after all stages are complete wins.\nIMPORTANT: Please remember to seed all heats in the next stage after the current stage is complete."
         rhapi.db.raceclass_alter(classId, rounds=1, raceformat=getRaceFormatByName(rhapi, "First to 3 Laps"), heat_advance_type=HeatAdvanceType.NEXT_HEAT, description=pointsDescription, win_condition=getClassRankMethodByName(rhapi, "Total_Stage_Points"))
-        
+
         log(str(args))
         
         classHeats = rhapi.db.heats_by_class(classId)
