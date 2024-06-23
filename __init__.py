@@ -253,7 +253,7 @@ def StreetLeaguePointsGenerator(rhapi, args):
                 if(stage==1):
                     seedMethod = SeedMethod.INPUT
                 else:
-                    seedMethod = SeedMethod.CLASS_ID
+                    seedMethod = SeedMethod.CLASS_INDEX
                 log("  - skipping "+str(seatsToSkip)+" seats. "+str(totalPilotsToSeed)+" pilots to seed")
                 for node in range(seatsToSkip,availableSeats):
                     seatsToSkip = 0
