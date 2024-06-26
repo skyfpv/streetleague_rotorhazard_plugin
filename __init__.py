@@ -1,6 +1,8 @@
+import os
+import subprocess
 from eventmanager import Evt
 from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
-from RHUI import UIField, UIFieldType, UIFieldSelectOption
+from RHUI import QuickButton, UIField, UIFieldType, UIFieldSelectOption
 from Results import RaceClassRankMethod
 from Database import HeatAdvanceType
 import logging
@@ -8,7 +10,7 @@ import math
 logger = logging.getLogger(__name__)
 
 #Logging
-DEBUG_LOGGING = False
+DEBUG_LOGGING = True
 
 #FieldNames
 HEAT_STAGE_ATTR_NAME = "HeatStage"
@@ -39,29 +41,65 @@ def getPilotsInClass(rhapi, classId):
         pilotsInClass = rhapi.db.pilots
     return pilotsInClass
 
-def my_heat_generator_fn(rhapi, args):
-    
-    log(rhapi.fields.heat_attributes)
-    log("heat attributes...")
-    for heat in rhapi.db.heats:
-        log(heat.name)
-        heatAttributes = rhapi.db.heat_attributes(heat.id)
-        if(heatAttributes==[]):
-            log("-> 1")
-            rhapi.db.heat_alter(heat.id, attributes={HEAT_STAGE_ATTR_NAME:1})
-        else:
-            for attribute in heatAttributes:
-                log("- "+str(attribute.name)+str(attribute.value))
+def StreetLeagueElite8(rhapi, args):
 
-
-    inputClass = args["input_class"]
-    outputClass = args["output_class"]
-    availableSeats = args["available_seats"]
-
-    generatedHeats = []
-
-
-    log("heats generated!!!!")
+    generatedHeatPlans = [
+        HeatPlan(
+            "Semifinal B - Heat 1/2",
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 2),
+                HeatPlanSlot(SeedMethod.INPUT, 4),
+                HeatPlanSlot(SeedMethod.INPUT, 6),
+                HeatPlanSlot(SeedMethod.INPUT, 8)
+            ]
+        ),
+        
+        HeatPlan(
+            "Semifinal A - Heat 1/2",
+            [
+                HeatPlanSlot(SeedMethod.INPUT, 1),
+                HeatPlanSlot(SeedMethod.INPUT, 3),
+                HeatPlanSlot(SeedMethod.INPUT, 5),
+                HeatPlanSlot(SeedMethod.INPUT, 7)
+            ]
+        ),
+        HeatPlan(
+            "Semifinal B - Heat 2/2",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 0)
+            ]
+        ),
+        
+        HeatPlan(
+            "Semifinal A - Heat 2/2",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 4, 1)
+            ]
+        ),
+        HeatPlan(
+            "Next 4 - Finals",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 2, 3),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 3, 3)
+            ]
+        ),
+        HeatPlan(
+            "Top 4 -Finals",
+            [
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 0),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 1),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 2),
+                HeatPlanSlot(SeedMethod.HEAT_INDEX, 1, 3)
+            ]
+        )
+    ]
+    return generatedHeatPlans
 
 def getClassIndex(rhapi, classId):
     outputClassIndex = 0
@@ -276,22 +314,25 @@ def StreetLeaguePointsGenerator(rhapi, args):
 
 
 def register_generator_handlers(args):
+    
+
+
+    #register elite 8
+    #stageCount = UIField(name = STAGE_COUNT_FIELD_NAME, label = 'Number of Stages', field_type = UIFieldType.CHECKBOX, value = True)
+    EliteEightSettings = []
+    args['register_fn'](
+        HeatGenerator("Street League Elite 8", generator_fn=StreetLeagueElite8, settings=EliteEightSettings)
+    )
+
     #register points race
     stageCount = UIField(name = STAGE_COUNT_FIELD_NAME, label = 'Number of Stages', field_type = UIFieldType.BASIC_INT, value = 8)
     pointsSettings = [stageCount]
     
-    #generate 
+    #register street league points
     args['register_fn'](
         
         HeatGenerator(label="Street League Points", generator_fn=StreetLeaguePointsGenerator, settings=pointsSettings)
     )
-
-
-    #TO-DO register elite 8 final
-    # EliteEightSettings = []
-    # args['register_fn'](
-    #     HeatGenerator("Street League Elite 8", generator_fn=my_heat_generator_fn, settings=EliteEightSettings)
-    # )
 
 def register_ranking_handlers(args):
     args['register_fn'](
@@ -314,56 +355,103 @@ def getClassRankMethodByName(rhapi, rankMethodName):
             rankMethodByName = rankMethod
     return rankMethodByName
 
-#add the appropriate stage attribute to each of the generated heats
-def applyStages(args):
-    generator = args.get("generator")
+def applyElite8ClassDefaults(args):
+    rhapi = args.get("rhapi")
+    classId = args.get("output_class_id")
+
+    #set the class ranking method to ...TO-DO: create a new class ranking method for finals
+    pointsDescription = "The top 8 pilots are grouped into semifinals A and B. Each seminfinal group races twice. The winning pilot from each of those races advances into the Top 4 where they will race for positions 1-4. Pilots who fail to win a semifinal are knocked into the Next 4 race to compete for positions 5-8."
+    rhapi.db.raceclass_alter(classId, rounds=1, raceformat=getRaceFormatByName(rhapi, "First to 3 Laps"), heat_advance_type=HeatAdvanceType.NEXT_HEAT, description=pointsDescription, win_condition=getClassRankMethodByName(rhapi, "Last_Heat_Position"))
+    rhapi.ui.broadcast_raceclasses()
+#apply class defaults as well as appropriate stage attribute to each of the generated heats
+def applyPointsClassDefaults(args):
     generate_args = args.get("generate_args")
     generatorStageCount = int(generate_args.get(STAGE_COUNT_FIELD_NAME))
     available_seats = int(generate_args.get("available_seats"))
     classId = args.get("output_class_id")
-    #we need to apply stage attributes to the heats which just got generated
-    if(generator=="Street_League_Points"):
-        log("apply stages...")
-        rhapi = args.get("rhapi")
+    log("apply stages...")
+    rhapi = args.get("rhapi")
 
-        #set the class ranking method to Total Stage Points
-        pointsDescription = "Similar to Mario Kart, pilots earn points by setting the fastest time they can in each stage; 1pt for every competitor they beat. After each stage, the next stage is seeded based on pilots' total points, keeping rivals in the same heat. The pilot who earns the most points after all stages are complete wins.\nIMPORTANT: Please remember to seed all heats in the next stage after the current stage is complete."
-        rhapi.db.raceclass_alter(classId, rounds=1, raceformat=getRaceFormatByName(rhapi, "First to 3 Laps"), heat_advance_type=HeatAdvanceType.NEXT_HEAT, description=pointsDescription, win_condition=getClassRankMethodByName(rhapi, "Total_Stage_Points"))
+    #set the class ranking method to Total Stage Points
+    pointsDescription = "Similar to Mario Kart, pilots earn points by setting the fastest time they can in each stage; 1pt for every competitor they beat. After each stage, the next stage is seeded based on pilots' total points, keeping rivals in the same heat. The pilot who earns the most points after all stages are complete wins.\nIMPORTANT: Please remember to seed all heats in the next stage after the current stage is complete."
+    rhapi.db.raceclass_alter(classId, rounds=1, raceformat=getRaceFormatByName(rhapi, "First to 3 Laps"), heat_advance_type=HeatAdvanceType.NEXT_HEAT, description=pointsDescription, win_condition=getClassRankMethodByName(rhapi, "Total_Stage_Points"))
 
-        log(str(args))
-        
-        classHeats = rhapi.db.heats_by_class(classId)
-        log("class has "+str(len(classHeats))+" heats")
-        totalPilots = len(getPilotsInClass(rhapi, classId))
-        heatsPerStage = math.ceil(totalPilots/available_seats)
+    log(str(args))
+    
+    classHeats = rhapi.db.heats_by_class(classId)
+    log("class has "+str(len(classHeats))+" heats")
+    totalPilots = len(getPilotsInClass(rhapi, classId))
+    heatsPerStage = math.ceil(totalPilots/available_seats)
 
-        classHeatIndex = 0
-        for stage in range(0,generatorStageCount):
-            log("- stage: "+str(stage))
-            for stageHeatIndex in range(0,heatsPerStage):
-                log(" - stage heat index: "+str(stageHeatIndex))
-                log(" - class heat index: "+str(classHeatIndex))
-                heat = classHeats[classHeatIndex]
-                log(" - setting heat "+str(heat.name)+" stage attr to "+str(stage+1))
+    classHeatIndex = 0
+    for stage in range(0,generatorStageCount):
+        log("- stage: "+str(stage))
+        for stageHeatIndex in range(0,heatsPerStage):
+            log(" - stage heat index: "+str(stageHeatIndex))
+            log(" - class heat index: "+str(classHeatIndex))
+            heat = classHeats[classHeatIndex]
+            log(" - setting heat "+str(heat.name)+" stage attr to "+str(stage+1))
 
-                rhapi.db.heat_alter(heat.id, attributes={HEAT_STAGE_ATTR_NAME:int(stage+1)})
-                classHeatIndex+=1
-        rhapi.ui.broadcast_raceclasses()
-    else:
-        log(generator)
+            rhapi.db.heat_alter(heat.id, attributes={HEAT_STAGE_ATTR_NAME:int(stage+1)})
+            classHeatIndex+=1
+    rhapi.ui.broadcast_raceclasses()
 
 def generate_complete_handler(args):
-    applyStages(args)
+    log("generate points complete handler")
+    log(args)
+    if(args["generator"]=="Street_League_Points"):
+        applyPointsClassDefaults(args)
+    if(args["generator"]=="Street_League_Elite_8"):
+        applyElite8ClassDefaults(args)
+    
+class RHmanager():
+    def __init__(self, rhapi):
+        self._rhapi = rhapi
+        #register the heat generators
 
+        #points race
+        rhapi.events.on(Evt.HEAT_GENERATOR_INITIALIZE, register_generator_handlers)
+        rhapi.events.on(Evt.CLASS_RANK_INITIALIZE, register_ranking_handlers)
+        rhapi.events.on(Evt.HEAT_GENERATE, generate_complete_handler, default_args={"rhapi":rhapi})
 
+        #register the stage attribute
+        heatStage = UIField(name = HEAT_STAGE_ATTR_NAME, label = 'Stage', field_type = UIFieldType.BASIC_INT, value = 0)
+        rhapi.fields.register_heat_attribute(heatStage)
+
+        #register UI panels
+        settingsPanel = rhapi.ui.register_panel("street_league_plugin", "Street League", "settings", order=0)
+        #register panel
+        #register buttons
+        rhapi.ui.register_quickbutton('street_league_plugin', 'update_plugin', 'Update Plugin', self.update_plugin)
+
+    def update_plugin(self, args):
+        log("updating Street League plugin")
+        current_dir = os.getcwd()
+        log("current directory: "+current_dir)
+        plugin_relative_path = "plugins/streetleague_rotorhazard_plugin"
+        plugin_path = os.path.join(current_dir, plugin_relative_path)
+        try:
+            # Pull the latest code from the main branch
+            log(["git", "pull", "origin", "main"])
+            result = subprocess.run(
+                ["git", "pull", "origin", "main"],
+                check=True,
+                cwd=plugin_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            log(result.stdout)
+            
+            log("Street League plugin updated successfully.")
+            self._rhapi.ui.message_alert("Street League plugin updated successfully.")
+        except subprocess.CalledProcessError as e:
+            log(e.output)
+            log(e.stderr)
+            log(f"An error occurred while updating the plugin: {e}")
+            self._rhapi.ui.message_alert("An error occurred while updating the plugin. Please check logs.")
 
 def initialize(rhapi):
-
-    heatStage = UIField(name = HEAT_STAGE_ATTR_NAME, label = 'Stage', field_type = UIFieldType.BASIC_INT, value = 0)
-
-    rhapi.events.on(Evt.HEAT_GENERATOR_INITIALIZE, register_generator_handlers)
-    rhapi.fields.register_heat_attribute(heatStage)
-
-    rhapi.events.on(Evt.CLASS_RANK_INITIALIZE, register_ranking_handlers)
-
-    rhapi.events.on(Evt.HEAT_GENERATE, generate_complete_handler, default_args={"rhapi":rhapi})
+    log(str(rhapi.API_VERSION_MAJOR)+"."+str(rhapi.API_VERSION_MINOR))
+    RHmanager(rhapi)
