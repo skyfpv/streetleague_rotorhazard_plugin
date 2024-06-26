@@ -432,6 +432,17 @@ class RHmanager():
         plugin_path = os.path.join(current_dir, plugin_relative_path)
         try:
             # Pull the latest code from the main branch
+            log(["git", "fetch"])
+            result = subprocess.run(
+                ["git", "fetch"],
+                check=True,
+                cwd=plugin_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            log(result.stdout)
+
             log(["git", "pull", "origin", "main"])
             result = subprocess.run(
                 ["git", "pull", "origin", "main"],
@@ -441,7 +452,6 @@ class RHmanager():
                 stderr=subprocess.PIPE,
                 text=True
             )
-
             log(result.stdout)
             
             log("Street League plugin updated successfully. Please RotorHazard to see the changes.")
