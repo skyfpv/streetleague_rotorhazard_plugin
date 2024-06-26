@@ -455,7 +455,7 @@ class RHmanager():
             log(result.stdout)
             
             log("Street League plugin updated successfully. Please RotorHazard to see the changes.")
-            self._rhapi.ui.message_alert("Street League plugin updated successfully.")
+            self._rhapi.ui.message_alert("Street League plugin updated successfully. Please RotorHazard to see the changes.")
         except subprocess.CalledProcessError as e:
             log(e.output)
             log(e.stderr)
