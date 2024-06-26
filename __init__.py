@@ -432,9 +432,20 @@ class RHmanager():
         plugin_path = os.path.join(current_dir, plugin_relative_path)
         try:
             # Pull the latest code from the main branch
-            log(["git", "fetch"])
+            log(["git", "reset", "--hard", "HEAD"])
             result = subprocess.run(
-                ["git", "fetch"],
+                ["git", "reset", "--hard", "HEAD"],
+                check=True,
+                cwd=plugin_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            log(result.stdout)
+
+            log(["git", "checkout", "main"])
+            result = subprocess.run(
+                ["git", "reset", "--hard", "HEAD"],
                 check=True,
                 cwd=plugin_path,
                 stdout=subprocess.PIPE,
