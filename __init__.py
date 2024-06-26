@@ -463,5 +463,4 @@ class RHmanager():
             self._rhapi.ui.message_alert("An error occurred while updating the plugin. Please check logs.")
 
 def initialize(rhapi):
-    log(str(rhapi.API_VERSION_MAJOR)+"."+str(rhapi.API_VERSION_MINOR))
     RHmanager(rhapi)
