@@ -1,5 +1,7 @@
 import os
 import subprocess
+
+from flask import templating
 from eventmanager import Evt
 from HeatGenerator import HeatGenerator, HeatPlan, HeatPlanSlot, SeedMethod
 from RHUI import QuickButton, UIField, UIFieldType, UIFieldSelectOption
@@ -23,7 +25,8 @@ def log(message):
     else:
         logging.debug(str(message))
 
-def getPilotsInClass(rhapi, classId):
+#returns a list of pilots who have results in the class. If no class is passed, or no results are available, all pilots are returned
+def getPilotsFromClassResults(rhapi, classId):
     if classId:
         race_class = rhapi.db.raceclass_by_id(classId)
         class_results = rhapi.db.raceclass_results(race_class)
@@ -33,6 +36,25 @@ def getPilotsInClass(rhapi, classId):
             for pilot in class_results['by_race_time']:
                 byRaceTime.append(rhapi.db.pilot_by_id(pilot["pilot_id"]))
             pilotsInClass = byRaceTime
+        else:
+            # fall back to all pilots
+            pilotsInClass = rhapi.db.pilots
+    else:
+        # use total number of pilots
+        pilotsInClass = rhapi.db.pilots
+    return pilotsInClass
+
+def getPilotsInClass(rhapi, classId):
+    if classId:
+        class_heats = rhapi.db.heats_by_class(classId)
+        classPilots = []
+        if class_heats == []:
+            # fill from available results and convert to list of pilot objects
+            for heat in class_heats:
+                heat_slots = rhapi.db.slots_by_heat(heat.id)
+                for slot in heat_slots:
+                    if(slot.pilot_id!=None):
+                        classPilots[slot.pilot_id] = rhapi.db.pilot_by_id(slot.pilot_id)
         else:
             # fall back to all pilots
             pilotsInClass = rhapi.db.pilots
@@ -172,6 +194,7 @@ def pointsRanking(rhapi, raceClass, args):
     log("- order: "+str(raceClass.order))
     log("- active: "+str(raceClass.active))
     classPilots = getPilotsInClass(rhapi, raceClass.id)
+    log(classPilots)
     stageLeaderboards = {} #contains stage lists which have pilots sorted by race time
     stagePointsByPilotId = {}
     heatsByStage = getStageHeatsByClassId(rhapi, raceClass)
@@ -179,8 +202,7 @@ def pointsRanking(rhapi, raceClass, args):
     leaderboard = []
 
     #initialize the leaderboard for all pilots
-    for i in range(0,len(classPilots)):
-        pilot = classPilots[i]
+    for pilot in classPilots:
         totalPointsByPilotId[pilot.id] = 0
         stagePointsByPilotId[pilot.id] = []
 
@@ -189,7 +211,7 @@ def pointsRanking(rhapi, raceClass, args):
         stageLeaderboard = []
         #add all the pilot laps and times to the stage leaderboard
         for heatResult in heatsByStage[stage]:
-            for pilotResult in heatResult["by_race_time"]:
+            for pilotResult in heatResult["by_race_time"]: #TO-DO: THERE'S PROBLY A BUG HERE. PILOTS WITH NO HOLESHOT ARE NOT INCLUDED IN THE HEAT RESULTS
                 laps = pilotResult.get("laps")
                 totalTimeRaw = pilotResult.get("total_time_raw")
                 totalTime = pilotResult.get("total_time")
@@ -241,6 +263,9 @@ def pointsRanking(rhapi, raceClass, args):
     for stage in stageLeaderboards:
         rankFields.append({"name": "stage "+str(stage), "label":"Stage "+str(stage)})
     rankFields.append({"name": "points", "label":"Total Points"})
+    log("TO-DO")
+    log(rankFields)
+    log(leaderboard)
     return (leaderboard, {"method_label": "Total Stage Points", "rank_fields": rankFields})
 
 #points race heat generator
@@ -261,7 +286,7 @@ def StreetLeaguePointsGenerator(rhapi, args):
     log("available seats: "+str(availableSeats))
     log("stage count: "+str(stageCount))
 
-    totalPilotsToSeed = len(getPilotsInClass(rhapi, inputClassId))
+    totalPilotsToSeed = len(getPilotsFromClassResults(rhapi, inputClassId))
     
 
     if totalPilotsToSeed == 0:
