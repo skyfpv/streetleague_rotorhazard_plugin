@@ -1,0 +1,33 @@
+.spin-gradient {
+  height: 120px;
+  width: 120px;
+  position: relative;
+  overflow: hidden;
+}
+
+.spin-gradient:after {
+  content: "";
+  display: block;
+  z-index: -1;
+  position: absolute;
+  top: -10rem;
+  right: -100rem;
+  bottom: -10rem;
+  left: -100rem;
+  background-image: linear-gradient(
+    rgba(255, 0, 0, 0),
+    rgb(0, 255, 145),
+    rgba(0, 255, 0, 0)
+  );
+  animation: rotate-gradient linear 10s infinite;
+}
+
+@keyframes rotate-gradient {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pilot-card {
+  transition: transform 0.5s ease-in-out;
+}

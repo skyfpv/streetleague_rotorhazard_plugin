@@ -1,0 +1,42 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RotorHazard Plugin</title>
+    <script src="/sl/static/css/tailwind.css"></script>
+    <script
+      type="text/javascript"
+      src="/static/socket.io-4.6.1/socket.io.min.js"
+    ></script>
+    <script type="module" src="/sl/static/js/autopilot/main.js"></script>
+    <script src="/sl/static/js/autopilot/obsIntegration.js"></script>
+    <script src="/sl/static/js/autopilot/obs-websocket-js.js"></script>
+  </head>
+  <body class="bg-gray-200">
+    <div class="container mx-auto p-4">
+      <div class="bg-white p-4 my-4 rounded shadow-md">
+        <div
+          id="autopilot"
+          class="grid grid-cols-3 h-[100px] overflow-hidden"
+        ></div>
+        <div>
+          <label class="block text-gray-700 font-bold mb-2">Quick Keys</label>
+          <div id="quick-keys" class="flex my-4 gap-4"></div>
+        </div>
+      </div>
+
+      <div class="bg-gray-100 p-4 my-4 rounded shadow-md">
+        <button
+          id="add-event"
+          class="bg-green-500 hover:opacity-75 text-white font-bold py-2 px-4 rounded mb-4"
+        >
+          Add Event
+        </button>
+        <div id="events-container" class="grid gap-4"></div>
+      </div>
+      <div id="state-display"></div>
+    </div>
+  </body>
+</html>
