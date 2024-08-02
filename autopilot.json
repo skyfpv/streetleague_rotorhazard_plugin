@@ -1,0 +1,143 @@
+{
+  "events": [
+    {
+      "id": "1720334653985",
+      "name": "",
+      "trigger": "pilot_done",
+      "action": "obsDisableSceneItem",
+      "params": {
+        "Scene Name": "Race - Mixed",
+        "Item Name": "Big FPV",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720334706624",
+      "name": "",
+      "trigger": "pilot_done",
+      "action": "obsEnableSceneItem",
+      "params": {
+        "Scene Name": "Race - Mixed",
+        "Item Name": "Small FPV",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720334748075",
+      "name": "",
+      "trigger": "race_in_10",
+      "action": "obsSetScene",
+      "params": { "Scene Name": "Pilot Intro" }
+    },
+    {
+      "id": "1720334845547",
+      "name": "",
+      "trigger": "race_in_3",
+      "action": "obsSetScene",
+      "params": { "Scene Name": "Race - Launch" }
+    },
+    {
+      "id": "1720334877817",
+      "name": "",
+      "trigger": "race_first_pass",
+      "action": "obsSetScene",
+      "params": { "Scene Name": "Race - Mixed" }
+    },
+    {
+      "id": "1720335153389",
+      "name": "",
+      "trigger": "race_stop",
+      "action": "obsDisableSceneItem",
+      "params": {
+        "Scene Name": "Race - Mixed",
+        "Item Name": "Big FPV",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720335619151",
+      "name": "",
+      "trigger": "race_stop",
+      "action": "obsDisableSceneItem",
+      "params": {
+        "Scene Name": "Race - Mixed",
+        "Item Name": "Small FPV",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720335716346",
+      "name": "",
+      "trigger": "race_first_pass",
+      "action": "obsEnableSceneItem",
+      "params": {
+        "Scene Name": "Race - Mixed",
+        "Item Name": "Big FPV",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720335730413",
+      "name": "First Pass",
+      "trigger": "race_first_pass",
+      "action": "obsDisableSceneItem",
+      "params": {
+        "Scene Name": "Race - Mixed",
+        "Item Name": "Small FPV",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720335812291",
+      "name": "",
+      "trigger": "laps_save",
+      "action": "obsSetScene",
+      "params": {
+        "Scene Name": "Race - Results",
+        "Item Name": "Overlay - FPV Small",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720339320093",
+      "name": "",
+      "trigger": "race_in_300",
+      "action": "obsSetScene",
+      "params": {
+        "Scene Name": "Pilot Intro",
+        "Item Name": "Overlay - FPV Small",
+        "Item Index": "0"
+      }
+    },
+    {
+      "id": "1720339745476",
+      "name": "",
+      "trigger": "race_stage",
+      "action": "obsSetScene",
+      "params": { "Scene Name": "Race - Launch" }
+    },
+    {
+      "id": "1720340122153",
+      "name": "",
+      "trigger": "race_in_240",
+      "action": "obsSetScene",
+      "params": { "Scene Name": "Race - Flightline" }
+    },
+    {
+      "id": "1720341680040",
+      "name": "",
+      "trigger": "race_in_30",
+      "action": "obsSetScene",
+      "params": { "Scene Name": "Race - Launch" }
+    },
+    {
+      "id": "1720419931499",
+      "name": "",
+      "trigger": "laps_clear",
+      "action": "rhScheduleRace",
+      "params": { "Text": "asdf", "Start Delay": "300" }
+    }
+  ],
+  "updated": "2024-07-01T21:24:32.575Z",
+  "enabled": "true"
+}

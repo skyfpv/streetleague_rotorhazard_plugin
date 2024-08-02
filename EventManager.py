@@ -22,19 +22,19 @@ class EventManager():
         self.rh.api.events.on(Evt.LAPS_CLEAR, self.send_autopilot_trigger, default_args={"event_name": "laps_clear"})
         self.rh.api.events.on(Evt.LAPS_DISCARD, self.send_autopilot_trigger, default_args={"event_name": "laps_discard"})
         self.rh.api.events.on(Evt.HEAT_SET, self.handle_heat_set, default_args={"event_name": "heat_set"})
-        self.rh.api.events.on(Evt.RACE_PILOT_DONE, self.send_autopilot_trigger, default_args={"event_name": "pilot_done"})
-        self.rh.api.events.on(Evt.RACE_WIN, self.send_autopilot_trigger, default_args={"event_name": "race_win"})
-        self.rh.api.events.on(Evt.RACE_LAP_RECORDED, self.send_autopilot_trigger, default_args={"event_name": "lap_record"})
+        #self.rh.api.events.on(Evt.RACE_PILOT_DONE, self.send_autopilot_trigger, default_args={"event_name": "pilot_done"})
+        #self.rh.api.events.on(Evt.RACE_WIN, self.send_autopilot_trigger, default_args={"event_name": "race_win"})
+        #self.rh.api.events.on(Evt.RACE_LAP_RECORDED, self.send_autopilot_trigger, default_args={"event_name": "lap_record"})
         self.rh.api.events.on(Evt.RACE_SCHEDULE, self.handle_race_schedule)
         self.rh.api.events.on(Evt.RACE_SCHEDULE_CANCEL, self.handle_race_schedule_cancel)
 
         #overlay events
-        self.rh.api.events.on(Evt.RACE_LAP_RECORDED, self.handle_race_timing)
-        self.rh.api.events.on(Evt.RACE_PILOT_DONE, self.handle_race_timing)
-        self.rh.api.events.on(Evt.RACE_WIN, self.handle_race_timing)
         self.rh.api.events.on(Evt.LAP_DELETE, self.handle_race_timing)
 
         #overloaded events
+        self.rh.api.events.on(Evt.RACE_LAP_RECORDED, self.handle_race_lap_recorded)
+        self.rh.api.events.on(Evt.RACE_PILOT_DONE, self.handle_race_pilot_done)
+        self.rh.api.events.on(Evt.RACE_WIN, self.handle_race_win)
         self.rh.api.events.on(Evt.RACE_STAGE, self.handle_race_stage)
         self.rh.api.events.on(Evt.RACE_FIRST_PASS, self.handle_first_pass)
 
@@ -48,15 +48,25 @@ class EventManager():
         self.rh.api.ui.socket_listen("sl_get_pilot_colors", self.get_pilot_colors)
         self.rh.api.ui.socket_listen("sl_get_current_heat_results", self.handle_current_heat_results)
 
+    def handle_race_lap_recorded(self, data):
+        self.handle_race_timing(data)
+        self.send_autopilot_trigger({"event_name": "lap_record"})
+
+    def handle_race_pilot_done(self, data):
+        self.handle_race_timing(data)
+        self.send_autopilot_trigger({"event_name": "pilot_done"})
+
+    def handle_race_win(self, data):
+        self.handle_race_timing(data)
+        self.send_autopilot_trigger({"event_name": "race_win"})
+
     def handle_race_stage(self, data):
         self.handle_race_timing(data)
-        data["event_name"] = "race_stage"
-        self.send_autopilot_trigger(data)
+        self.send_autopilot_trigger({"event_name": "race_stage"})
 
     def handle_first_pass(self, data):
         self.handle_race_timing(data)
-        data["event_name"] = "race_first_pass"
-        self.send_autopilot_trigger(data)
+        self.send_autopilot_trigger({"event_name": "race_first_pass"})
 
     def get_pilot_colors(self):
         self.rh.log(self.rh.api.interface.seats)
@@ -87,10 +97,6 @@ class EventManager():
                 self.rh.api.ui.socket_broadcast("sl_current_stage_times", [])
                 self.handle_race_timing(None)
 
-    def handle_first_lap(self, data):
-        self.handle_race_timing(data)
-        self.send_ui_event("sl_race_timing", raceTiming)
-
     def handle_race_timing(self, data):
         raceTiming = self.rh.api.race.results
         raceTiming["race_start_time"] = str(self.rh.api.race.start_time)
@@ -102,7 +108,7 @@ class EventManager():
                 raceTiming["by_fastest_lap"][i]["pilot_id"] = raceTiming["by_race_time"][i]["callsign"]
         self.rh.log("handle_race_timing() "+str(self.rh.api.race.heat))
 
-        self.send_autopilot_trigger(data)
+        #self.send_autopilot_trigger(data)
 
     def handle_current_heat_results(self):
         self.send_ui_event("sl_current_heat_results", self.rh.api.race.results)
@@ -173,6 +179,7 @@ class EventManager():
         self.rh.api.ui.socket_broadcast("sl_seat_info", {"seat_info": seats})
 
     def send_autopilot_trigger(self, data):
+        self.rh.log(data["event_name"])
         self.rh.api.ui.socket_broadcast("autopilot_trigger", data)
 
     def send_ui_event(self, subject, body):
