@@ -3,7 +3,8 @@
 export function createLeaderboardGird(
   name,
   results,
-  colorClass,
+  qualifyingCutoff,
+  cutoffLabel,
   scrollDistance,
   scrollDelay,
   scrollCount
@@ -26,7 +27,7 @@ export function createLeaderboardGird(
 
   //create scrollable results
   const scrollableResults = document.createElement("div");
-  scrollableResults.className = `scrollableResults relative h-[100%] overflow-y-auto w-full`;
+  scrollableResults.className = `scrollableResults p-5 relative h-[100%] overflow-y-auto w-full`;
   scrollableResults.style = `
     scrollbar-width: none;
     ::-webkit-scrollbar {
@@ -43,7 +44,7 @@ export function createLeaderboardGird(
   const tableItemClass = `flex-1 mx-1 w-[25px] text-ellipsis text-nowrap overflow-hidden whitespace-nowrap`;
   const tablePosClass = `w-[60px] text-nowrap overflow-hidden whitespace-nowrap`;
   const tablePilotClass = `flex-1 mx-2 min-w-[175px] text-ellipsis text-nowrap overflow-hidden whitespace-nowrap`;
-  const tableRowClass = `flex min-h-11 w-full`;
+  const tableRowClass = `flex w-full my-2`;
 
   // Create table headers
   const headerRow = document.createElement("div");
@@ -72,6 +73,26 @@ export function createLeaderboardGird(
 
   // Create table rows
   for (let i = 0; i < results.length; i++) {
+    //add a qualifying cutoff line if needed
+    if (i == qualifyingCutoff && qualifyingCutoff != undefined) {
+      const cutoffRow = document.createElement("div");
+      cutoffRow.className = `w-full flex justify-center items-center`;
+
+      const cutoffRowLeft = document.createElement("div");
+      cutoffRowLeft.className = `w-full h-1 bg-gradient-to-r from-[var(--thick-glass-lite)] to-[var(--sl-green)]`;
+
+      const cutoffRowRight = document.createElement("div");
+      cutoffRowRight.className = `w-full h-1 bg-gradient-to-l from-[var(--thick-glass-lite)] to-[var(--sl-green)]`;
+
+      const cutoffLabelDiv = document.createElement("div");
+      cutoffLabelDiv.className = `px-6 text-[var(--sl-green)]`;
+      cutoffLabelDiv.innerText = cutoffLabel;
+
+      cutoffRow.appendChild(cutoffRowLeft);
+      cutoffRow.appendChild(cutoffLabelDiv);
+      cutoffRow.appendChild(cutoffRowRight);
+      scrollableResults.appendChild(cutoffRow);
+    }
     const row = document.createElement("div");
     row.className = tableRowClass;
     const result = results[i];
@@ -97,17 +118,19 @@ export function createLeaderboardGird(
       }, leaderboardExpandTime + i * itemFadeOffset);
       row.appendChild(item);
     }
+
     scrollableResults.appendChild(row);
   }
 
   const leaderboardContainer = document.createElement("div");
   //leaderboardContainer.className = `relative h-[100%] overflow-hidden border-gray-300/75 w-[62px] p-[6px] rounded-[26px] bg-gradient-to-tl from-gray-600/60 from-25% via-gray-500/60 via-50% to-${colorClass} to-80%`;
-  leaderboardContainer.className = `spin-gradient relative h-[100%] overflow-hidden border-gray-300/75 border-purple-500 w-[62px] p-[6px] rounded-[26px] bg-gray-500/60`;
+  leaderboardContainer.className = `spin-gradient relative h-[100%] overflow-hidden border-gray-300/75 w-[62px] p-[6px] rounded-[26px] bg-[color:var(--glass-lite)]`;
 
   //leaderboardContainer.classList.add("spin-gradient");
 
   const leaderboardContent = document.createElement("div");
-  leaderboardContent.className = `relative h-[100%] overflow-hidden w-full p-5 font-bold font-mono text-2xl text-white whitespace-nowrap text-clip text-nowrap rounded-[20px] bg-gradient-to-b from-slate-700 from-0% to-slate-800 to-100%`;
+  //leaderboardContent.className = `relative h-[100%] overflow-hidden w-full p-5 font-bold font-mono text-2xl text-white whitespace-nowrap text-clip text-nowrap rounded-[20px] bg-gradient-to-b from-zinc-800/60 from-90% to-zinc-900/60 to-100%`;
+  leaderboardContent.className = `hexagon relative h-[100%] overflow-hidden w-full font-bold font-mono text-2xl text-white whitespace-nowrap text-clip text-nowrap rounded-[20px]`;
 
   leaderboardContent.appendChild(scrollableResults);
 

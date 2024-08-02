@@ -13,11 +13,11 @@ class EventManager():
         #autopilot trigger events
         self.rh.api.events.on(Evt.CROSSING_ENTER, self.send_autopilot_trigger, default_args={"event_name": "crossing_enter"} )
         self.rh.api.events.on(Evt.CROSSING_EXIT, self.send_autopilot_trigger, default_args={"event_name": "crossing_exit"} )
-        self.rh.api.events.on(Evt.RACE_STAGE, self.send_autopilot_trigger, default_args={"event_name": "race_stage"})
+        #self.rh.api.events.on(Evt.RACE_STAGE, self.send_autopilot_trigger, default_args={"event_name": "race_stage"})
         self.rh.api.events.on(Evt.RACE_START, self.send_autopilot_trigger, default_args={"event_name": "race_start"})
         self.rh.api.events.on(Evt.RACE_STOP, self.send_autopilot_trigger, default_args={"event_name": "race_stop"})
         self.rh.api.events.on(Evt.RACE_FINISH, self.send_autopilot_trigger, default_args={"event_name": "race_finish"})
-        self.rh.api.events.on(Evt.RACE_FIRST_PASS, self.send_autopilot_trigger, default_args={"event_name": "race_first_pass"})
+        #self.rh.api.events.on(Evt.RACE_FIRST_PASS, self.send_autopilot_trigger, default_args={"event_name": "race_first_pass"})
         self.rh.api.events.on(Evt.LAPS_SAVE, self.send_autopilot_trigger, default_args={"event_name": "laps_save"})
         self.rh.api.events.on(Evt.LAPS_CLEAR, self.send_autopilot_trigger, default_args={"event_name": "laps_clear"})
         self.rh.api.events.on(Evt.LAPS_DISCARD, self.send_autopilot_trigger, default_args={"event_name": "laps_discard"})
@@ -29,16 +29,17 @@ class EventManager():
         self.rh.api.events.on(Evt.RACE_SCHEDULE_CANCEL, self.handle_race_schedule_cancel)
 
         #overlay events
-        self.rh.api.events.on(Evt.RACE_STAGE, self.handle_race_timing)
-        self.rh.api.events.on(Evt.RACE_FIRST_PASS, self.handle_race_timing)
         self.rh.api.events.on(Evt.RACE_LAP_RECORDED, self.handle_race_timing)
         self.rh.api.events.on(Evt.RACE_PILOT_DONE, self.handle_race_timing)
         self.rh.api.events.on(Evt.RACE_WIN, self.handle_race_timing)
         self.rh.api.events.on(Evt.LAP_DELETE, self.handle_race_timing)
 
+        #overloaded events
+        self.rh.api.events.on(Evt.RACE_STAGE, self.handle_race_stage)
+        self.rh.api.events.on(Evt.RACE_FIRST_PASS, self.handle_first_pass)
 
         #websocket listeners
-        self.rh.api.ui.socket_listen("autopilot_get_seat_info", self.handle_get_seat_info)
+        self.rh.api.ui.socket_listen("sl_get_seat_info", self.handle_get_seat_info)
         self.rh.api.ui.socket_listen("sl_leaderboard", self.handle_get_leaderboard)
         self.rh.api.ui.socket_listen("sl_schedule_race", self.handle_sl_schedule_race)
         self.rh.api.ui.socket_listen("sl_schedule_race", self.handle_sl_schedule_race)
@@ -47,39 +48,61 @@ class EventManager():
         self.rh.api.ui.socket_listen("sl_get_pilot_colors", self.get_pilot_colors)
         self.rh.api.ui.socket_listen("sl_get_current_heat_results", self.handle_current_heat_results)
 
+    def handle_race_stage(self, data):
+        self.handle_race_timing(data)
+        data["event_name"] = "race_stage"
+        self.send_autopilot_trigger(data)
+
+    def handle_first_pass(self, data):
+        self.handle_race_timing(data)
+        data["event_name"] = "race_first_pass"
+        self.send_autopilot_trigger(data)
 
     def get_pilot_colors(self):
+        self.rh.log(self.rh.api.interface.seats)
         self.rh.log("get_pilot_colors()")
         pilotColors = {}
         for pilot in self.rh.api.db.pilots:
             pilotColors[pilot.id] = pilot.color
         self.rh.api.ui.socket_broadcast("sl_pilot_colors", pilotColors)
 
-    # def get_current_race_times(self):
-    #     self.rh.log("get_current_race_times()")
-    #     racePoints = self.rh.api.eventresults.results["points"]
-    #     self.rh.api.ui.socket_broadcast("sl_current_race_points_order", racePoints)
-
     def get_current_stage_times(self):
         self.rh.log("get_current_stage_times()")
         currentHeatId = self.rh.api.race.heat
-        #check if we are in practice mode
         if(currentHeatId!=None):
             currentHeat = self.rh.api.db.heat_by_id(currentHeatId)
-
-            #check if this heat is classified or not
-            if(currentHeat.class_id!=None):
-                currentStage = int(self.rh.api.db.heat_attribute_value(currentHeat, Formats.HEAT_STAGE_ATTR_NAME, default_value=0))
-                currentClass = self.rh.api.db.raceclass_by_id(currentHeat.class_id)
-                classStages = self.rh.formatManager.getStageHeatsByClassId(currentClass)
-                self.rh.api.ui.socket_broadcast("sl_current_stage_times", classStages[currentStage])
+            #check if we aren't in practice mode
+            if(currentHeat!=None):
+                #check if this heat is classified or not
+                if(currentHeat.class_id!=None):
+                    currentStageNumber = self.rh.api.db.heat_attribute_value(currentHeat, Formats.HEAT_STAGE_ATTR_NAME, default_value=None)
+                    if(currentStageNumber==None):
+                        self.rh.api.ui.socket_broadcast("sl_current_stage_times", [])
+                    else:
+                        currentClass = self.rh.api.db.raceclass_by_id(currentHeat.class_id)
+                        classStages = self.rh.formatManager.getStageHeatsByClassId(currentClass)
+                        self.rh.api.ui.socket_broadcast("sl_current_stage_times", classStages[int(currentStageNumber)])
+                        self.handle_race_timing(None)
+            else:
+                self.rh.api.ui.socket_broadcast("sl_current_stage_times", [])
                 self.handle_race_timing(None)
+
+    def handle_first_lap(self, data):
+        self.handle_race_timing(data)
+        self.send_ui_event("sl_race_timing", raceTiming)
 
     def handle_race_timing(self, data):
         raceTiming = self.rh.api.race.results
         raceTiming["race_start_time"] = str(self.rh.api.race.start_time)
-        self.rh.log("handle_race_timing() "+str(self.rh.api.race.start_time_internal))
-        self.send_ui_event("sl_race_timing", raceTiming)
+        #if we're in practice mode
+        if(self.rh.api.db.heat_by_id(self.rh.api.race.heat)==None):
+            for i in range(0,len(raceTiming["by_race_time"])):
+                raceTiming["by_race_time"][i]["pilot_id"] = raceTiming["by_race_time"][i]["callsign"]
+                raceTiming["by_consecutives"][i]["pilot_id"] = raceTiming["by_race_time"][i]["callsign"]
+                raceTiming["by_fastest_lap"][i]["pilot_id"] = raceTiming["by_race_time"][i]["callsign"]
+        self.rh.log("handle_race_timing() "+str(self.rh.api.race.heat))
+
+        self.send_autopilot_trigger(data)
 
     def handle_current_heat_results(self):
         self.send_ui_event("sl_current_heat_results", self.rh.api.race.results)
@@ -99,38 +122,55 @@ class EventManager():
         self.rh.api.ui.socket_broadcast("sl_leaderboard", raceRanks)
 
     def handle_get_seat_info(self, data=None):
+        self.rh.log("handle_get_seat_info()")
         frequencies = json.loads(self.rh.api.race.frequencyset.frequencies)
-
+        self.rh.log(frequencies)
         seats = {}
-        for index in self.rh.api.race.pilots:
-            pilot = self.rh.api.db.pilot_by_id(self.rh.api.race.pilots[index])
-            seatColor = self.rh.api.race.seat_colors[index]
-            seatActive = (frequencies['b'][index] != None)
-            if pilot == None:
-                pilotDictItem = {
-                    "id": 0,
+        if(self.rh.api.race.heat != 0):
+            for index in self.rh.api.race.pilots:
+                pilot = self.rh.api.db.pilot_by_id(self.rh.api.race.pilots[index])
+                seatColor = self.rh.api.race.seat_colors[index]
+                seatActive = (frequencies['b'][index] != None)
+                if pilot == None:
+                    pilotDictItem = {
+                        "id": 0,
+                        "name": "",
+                        "callsign": "",
+                        "team": None,
+                        "color": None,
+                        "used_frequencies": "[]",
+                        "active_seat": seatActive,
+                        "active_color": seatColor
+                    }
+                else:
+                    pilotDictItem = {
+                        "id": pilot.id,
+                        "name": pilot.name,
+                        "callsign": pilot.callsign,
+                        "team": pilot.team,
+                        "color": pilot.color,
+                        "used_frequencies": pilot.used_frequencies,
+                        "active_seat": seatActive,
+                        "active_color": seatColor
+                    }
+                seats[index] = pilotDictItem
+        else:
+            self.rh.log("practice mode")
+            for index in range(0, len(self.rh.api.race.results["by_race_time"])):
+                seats[index] = {
+                    "id": self.rh.api.race.results["by_race_time"][index]["callsign"],
                     "name": "",
-                    "callsign": "",
+                    "callsign": self.rh.api.race.results["by_race_time"][index]["callsign"],
                     "team": None,
                     "color": None,
                     "used_frequencies": "[]",
-                    "active_seat": seatActive,
-                    "active_color": seatColor
+                    "active_seat": True,
+                    "active_color": self.rh.api.race.seat_colors[index]
                 }
-            else:
-                pilotDictItem = {
-                    "id": pilot.id,
-                    "name": pilot.name,
-                    "callsign": pilot.callsign,
-                    "team": pilot.team,
-                    "color": pilot.color,
-                    "used_frequencies": pilot.used_frequencies,
-                    "active_seat": seatActive,
-                    "active_color": seatColor
-                }
-            seats[index] = pilotDictItem
         
-        self.rh.api.ui.socket_broadcast("autopilot_seat_info", {"seat_info": seats})
+
+        self.rh.log(self.rh.api.race.heat)
+        self.rh.api.ui.socket_broadcast("sl_seat_info", {"seat_info": seats})
 
     def send_autopilot_trigger(self, data):
         self.rh.api.ui.socket_broadcast("autopilot_trigger", data)

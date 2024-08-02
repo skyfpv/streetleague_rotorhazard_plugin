@@ -26,7 +26,7 @@ class FormatManager():
         self.rh.api.events.on(Evt.HEAT_GENERATE, self.generate_complete_handler)
 
         #register the stage attribute
-        heatStage = UIField(name = Formats.HEAT_STAGE_ATTR_NAME, label = 'Stage', field_type = UIFieldType.BASIC_INT, value = 0)
+        heatStage = UIField(name = Formats.HEAT_STAGE_ATTR_NAME, label = 'Stage', field_type = UIFieldType.BASIC_INT, value = None)
         self.rh.api.fields.register_heat_attribute(heatStage)
 
     #returns a list of pilots who have results in the class. If no class is passed, or no results are available, all pilots are returned

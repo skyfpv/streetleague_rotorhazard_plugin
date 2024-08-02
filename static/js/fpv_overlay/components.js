@@ -13,10 +13,10 @@ export function createFPVOverlay(
   displayArea.className = "h-full";
 
   const pilotTag = document.createElement("div");
-  pilotTag.className = `h-full text-nowrap overflow-hidden w-full p-3 font-mono font-bold text-3xl text-white flex items-center rounded-tr-[20px] bg-gradient-to-r from-slate-700 from-0% to-slate-600 to-100%`;
+  pilotTag.className = `h-full text-nowrap overflow-hidden w-full p-3 font-mono font-bold text-3xl text-white flex items-center rounded-tr-[20px] bg-gradient-to-r from-[color:var(--carbon)] from-0% to-[color:var(--carbon-lite)] to-100%`;
 
   const pilotTagBorder = document.createElement("div");
-  pilotTagBorder.className = `h-[${tagHeight}px] text-nowrap border-[1px] border-gray-300/75 overflow-hidden w-[0%] p-[6px] rounded-tr-[26px] bg-gradient-to-tr from-gray-600/60 from-25% via-gray-500/60 via-50% to-[${colorClass}] to-80%`;
+  pilotTagBorder.className = `h-[${tagHeight}px] text-nowrap border-[1px] border-gray-300/75 overflow-hidden w-[0%] p-[6px] rounded-tr-[26px] bg-gradient-to-tr from-[color:var(--glass)] from-25% via-gray-500/60 via-50% to-[${colorClass}] to-80%`;
 
   const pilotCallsign = document.createElement("p");
   pilotCallsign.className = `text-4xl text-nowrap w-full overflow-hidden whitespace-nowrap text-clip`;

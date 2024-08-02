@@ -1,0 +1,14 @@
+:root {
+  --sl-green: rgb(0 221 125);
+
+  --carbon-very-lite: rgb(109, 125, 133);
+  --carbon-lite: rgb(62, 74, 79);
+  --carbon: rgb(43, 62, 70);
+  --carbon-dark: rgb(29, 38, 40);
+  --carbon-very-dark: rgb(22, 24, 26);
+
+  --glass: rgba(39, 45, 51, 0.2);
+  --glass-lite: rgba(126, 139, 145, 0.4);
+  --thick-glass: rgba(23, 33, 36, 0.8);
+  --thick-glass-lite: rgba(43, 55, 58, 0.8);
+}

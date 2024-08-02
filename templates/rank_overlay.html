@@ -7,22 +7,23 @@
     ></script>
     <script type="module" src="/sl/static/js/rank_overlay/main.js"></script>
     <link href="/sl/static/css/rank_overlay.css" rel="stylesheet" />
+    <link href="/sl/static/css/global.css" rel="stylesheet" />
   </head>
   <body>
     <div
-      class="h-full text-nowrap overflow-hidden w-[0%] p-[6px] rounded-l-[46px] bg-gradient-to-bl from-gray-600/60 from-25% via-gray-500/60 via-50% to-[#00FF91] to-80%"
+      class="h-full text-nowrap overflow-hidden w-[0%] p-[6px] rounded-l-[46px] bg-gradient-to-bl from-gray-600/60 from-25% via-gray-500/60 via-50% to-[color:var(--sl-green)] to-80%"
       style="width: 288px; transition: width 0.75s ease-in-out 0s"
     >
       <div
-        class="h-full text-nowrap overflow-hidden w-full font-mono font-bold text-3xl text-white rounded-l-[40px] bg-gradient-to-r from-slate-800 from-0% to-slate-700 to-100%"
+        class="h-full text-nowrap overflow-hidden w-full font-mono font-bold text-3xl text-white rounded-l-[40px] bg-gradient-to-t from-[color:var(--carbon)] from-0% to-[color:var(--carbon-dark)] to-5%"
       >
         <div
           id="header"
-          class="header w-full p-3 text-2xl text-white font-mono font-bold text-center bg-slate-700"
+          class="header w-full p-3 text-2xl text-white font-mono font-bold text-center bg-[color:var(--carbon)]"
         >
           Stage Standings
         </div>
-        <div id="leaderboard" class="relative"></div>
+        <div id="leaderboard" class="" style="position: relative"></div>
       </div>
     </div>
 

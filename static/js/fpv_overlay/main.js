@@ -18,16 +18,16 @@ document.addEventListener("DOMContentLoaded", () => {
   overlayContainer.classList.add("grid-cols-" + columns);
   console.log(overlayContainer);
 
-  socket.emit("autopilot_get_seat_info");
+  socket.emit("sl_get_seat_info");
 
-  socket.on("autopilot_seat_info", (body) => {
+  socket.on("sl_seat_info", (body) => {
     updateOverlay(body);
   });
 
   function updateOverlay(body) {
     overlayContainer.innerHTML = "";
     const seats = body.seat_info;
-    console.log(seats);
+    console.log(body);
 
     for (const [index, seat] of Object.entries(seats)) {
       if (seat.active_seat) {

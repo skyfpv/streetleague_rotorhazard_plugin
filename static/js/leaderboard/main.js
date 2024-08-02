@@ -12,6 +12,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let scrollDistance = params.get("scrollDistance") || 0;
   let scrollDelay = params.get("scrollDelay") || 0;
   let scrollCount = params.get("scrollCount") || 0;
+  let cutoff = params.get("cutoff") || undefined;
+  let cutoffLabel = params.get("cutoffLabel") || "Qualifying";
 
   console.log("waiting socket connection");
   socket.on("connect", () => {
@@ -26,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function updateLeaderboard(leaderboard) {
+    console.log(" >>>>> ", leaderboard);
     const leaderboardName = leaderboard.name;
     const meta = leaderboard.leaderboard.meta;
     let leaderboardFields = [];
@@ -147,7 +150,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const leaderboardGrid = createLeaderboardGird(
       leaderboardName,
       filteredResults,
-      "emerald-400",
+      cutoff,
+      cutoffLabel,
       scrollDistance,
       scrollDelay,
       scrollCount

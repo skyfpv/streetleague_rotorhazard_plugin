@@ -7,12 +7,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const header = document.querySelector("#header");
   let stageTimes = [];
   let combinedRanks = [];
-  let pilotColors = {};
+
   let pilotCards = [];
   let progressToWin = 4;
   let currentProgress = 0;
   let raceCurrentTime = 0;
   let raceStartTime = Date.now();
+
+  let pilotColors = {};
+  let seatInfo = {};
+  let heatResults = {};
+  let lastStageTimes = [];
+  let primaryLeaderboard = "by_race_time";
 
   updateHeader();
 
@@ -24,8 +30,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const socket = io();
 
-  socket.on("autopilot_seat_info", (body) => {
-    //updateOverlay(body);
+  socket.on("sl_seat_info", (body) => {
+    seatInfo = body;
+    createLeaderboard();
+    updateLeaderboard();
+    console.log("seat_info", seatInfo);
   });
 
   socket.on("autopilot_trigger", (body) => {
@@ -52,19 +61,21 @@ document.addEventListener("DOMContentLoaded", () => {
       socket.emit("sl_get_pilot_colors");
       socket.emit("sl_get_current_stage_times");
       socket.emit("sl_get_current_heat_results");
+      console.log("heat_set");
     }
   });
 
   socket.on("sl_race_timing", (body) => {
-    const primaryLeaderboard = body.meta.primary_leaderboard;
-    const heatResults = body[primaryLeaderboard];
-    console.log(body);
-    updateCurrentProgress(body);
+    primaryLeaderboard = body.meta.primary_leaderboard;
+    heatResults = body;
+    console.log(heatResults);
+    updateCurrentProgress();
 
     console.log("currentProgress: " + currentProgress);
     updateHeader();
     const oldCombinedRanks = combinedRanks;
-    combineRanks(body);
+    updateStageTimes();
+    combineRanks();
     if (oldCombinedRanks.length !== combinedRanks.length) {
       console.log("combinedRanks changed");
       createLeaderboard();
@@ -74,31 +85,40 @@ document.addEventListener("DOMContentLoaded", () => {
 
   socket.on("sl_current_stage_times", (body) => {
     console.log("sl_current_stage_times");
-    updateStageTimes(body);
+    console.log(body);
+    lastStageTimes = body;
+    updateStageTimes();
+    combineRanks();
     createLeaderboard();
+    updateLeaderboard();
   });
 
   socket.on("sl_current_heat_results", (body) => {
     console.log("sl_current_heat_results");
+    console.log(body);
+    heatResults = body;
+    updateStageTimes();
+    combineRanks();
+    createLeaderboard();
+    updateLeaderboard();
   });
 
   socket.on("sl_pilot_colors", (body) => {
-    pilotColors = body;
+    setPilotColors(body);
   });
 
-  socket.emit("autopilot_get_seat_info");
+  socket.emit("sl_get_seat_info");
   socket.emit("sl_get_pilot_colors");
   socket.emit("sl_get_current_stage_times");
   socket.emit("sl_get_current_heat_results");
 
-  function updateCurrentProgress(body) {
-    const primaryLeaderboard = body.meta.primary_leaderboard;
-    const heatResults = body[primaryLeaderboard];
-    raceStartTime = parseFloat(body.race_start_time);
+  function updateCurrentProgress() {
+    const leaderboard = heatResults[primaryLeaderboard];
+    raceStartTime = parseFloat(leaderboard.race_start_time);
 
     raceCurrentTime = 0;
     let greatestProgress = 0;
-    heatResults.map((heatResult) => {
+    leaderboard.map((heatResult) => {
       if (heatResult.laps + heatResult.starts > greatestProgress) {
         greatestProgress = heatResult.laps + heatResult.starts;
       }
@@ -107,6 +127,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
     currentProgress = greatestProgress;
+  }
+
+  function setPilotColors(body) {
+    console.log("updateSeatColors");
+    pilotColors = {};
+    for (const [key, color] of Object.entries(body)) {
+      console.log(key, color);
+      pilotColors[key] = color;
+    }
   }
 
   function parseHeatResults(heatResults, active) {
@@ -150,28 +179,38 @@ document.addEventListener("DOMContentLoaded", () => {
     return r;
   }
 
-  function combineRanks(heat) {
-    combinedRanks = [];
-    const primaryLeaderboard = heat.meta.primary_leaderboard;
-    const heatResults = heat[primaryLeaderboard];
+  function combineRanks() {
+    const leaderboard = heatResults[primaryLeaderboard];
 
-    parseHeatResults(heatResults, true).map((result) => {
-      result.color = pilotColors[result.pilot_id];
-      combinedRanks.push(result);
-    });
+    //combine pilots from the current heat
+    if (leaderboard != undefined) {
+      combinedRanks = [];
+      const parsedHeatResults = parseHeatResults(leaderboard, true);
+      parsedHeatResults.map((result) => {
+        result.color = pilotColors[result.pilot_id];
+        combinedRanks.push(result);
+      });
+      //combine the times from the previous heats in the stage
+      stageTimes.map((stageTime) => {
+        stageTime.color = "#888888";
 
-    //combine the times from the previous heats in the stage
-    stageTimes.map((stageTime) => {
-      stageTime.color = "#888888";
-      combinedRanks.push(stageTime);
-    });
+        //don't add duplicate pilots if the pilots from the current heat already have results
+        const found = parsedHeatResults.find(
+          (c) => c.pilot_id == stageTime.pilot_id
+        );
+        if (found == undefined) {
+          combinedRanks.push(stageTime);
+        } else {
+        }
+      });
 
-    combinedRanks = sortTimesByPace(combinedRanks);
+      combinedRanks = sortTimesByPace(combinedRanks);
+    }
   }
 
-  function updateStageTimes(body) {
+  function updateStageTimes() {
     stageTimes = [];
-    body.map((heat, heatIndex) => {
+    lastStageTimes.map((heat, heatIndex) => {
       const primaryLeaderboard = heat.meta.primary_leaderboard;
       const heatResults = heat[primaryLeaderboard];
       parseHeatResults(heatResults, false).map((result) => {
@@ -182,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function createLeaderboard() {
-    console.log("refreshLeaderboard");
+    console.log("createLeaderboard");
     leaderboardContainer.innerHTML = "";
     pilotCards = [];
     combinedRanks.map((seat, seatIndex) => {
@@ -195,31 +234,36 @@ document.addEventListener("DOMContentLoaded", () => {
         `${seatIndex + 1}${ordinal(seatIndex + 1)}`
       );
       card.dataset.pilotId = seat.pilot_id;
-      card.dataset.initialOffsetY = tagHeight * seatIndex;
       pilotCards.push(card);
       leaderboardContainer.appendChild(card);
     });
   }
 
   function updateLeaderboard() {
+    console.log("updateLeaderboard");
+    console.log(combinedRanks);
     combinedRanks.map((seat, seatIndex) => {
       let card = pilotCards.find((c) => c.dataset.pilotId == seat.pilot_id);
+      //console.log(">>>> ", card);
       let interval = calculateInterval(seat, seatIndex);
       //if the interval is undefined, it's a dnf
       if (interval === undefined) {
         interval = "time since rival passed";
       }
 
-      //the card doesn't exist already, create it
-      if (card) {
-        const intervalDiv = card.querySelector(".interval");
-        const positionDiv = card.querySelector(".position");
-        intervalDiv.textContent = interval;
-        positionDiv.textContent = `${seatIndex + 1}${ordinal(seatIndex + 1)}`;
-        card.style.transform = `translateY(${
-          seatIndex * tagHeight - card.dataset.initialOffsetY
-        }px)`;
-      }
+      //update card info
+      const intervalDiv = card.querySelector(".interval");
+      const positionDiv = card.querySelector(".position");
+      intervalDiv.textContent = interval;
+      positionDiv.textContent = `${seatIndex + 1}${ordinal(seatIndex + 1)}`;
+      // card.style.transform = `translateY(${
+      //   seatIndex * tagHeight - card.dataset.initialOffsetY
+      // }px)`;
+      //console.log(seat);
+      //console.log(seatIndex);
+
+      card.style.transform = `translateY(${seatIndex * tagHeight}px)`;
+      //console.log(card.style.transform, "==", seatIndex * tagHeight);
     });
   }
 
