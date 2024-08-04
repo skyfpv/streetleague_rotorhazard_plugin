@@ -107,7 +107,7 @@ class EventManager():
                 raceTiming["by_consecutives"][i]["pilot_id"] = raceTiming["by_race_time"][i]["callsign"]
                 raceTiming["by_fastest_lap"][i]["pilot_id"] = raceTiming["by_race_time"][i]["callsign"]
         self.rh.log("handle_race_timing() "+str(self.rh.api.race.heat))
-
+        self.send_ui_event("sl_race_timing", raceTiming)
         #self.send_autopilot_trigger(data)
 
     def handle_current_heat_results(self):
