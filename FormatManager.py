@@ -4,7 +4,7 @@ from RHUI import QuickButton, UIField, UIFieldType, UIFieldSelectOption
 from Database import HeatAdvanceType
 from Results import RaceClassRankMethod
 from eventmanager import Evt
-
+import re
 
 
 #FieldNames
@@ -143,7 +143,18 @@ class FormatManager():
         stageHeats = {}
         classHeats = self.rh.api.db.heats_by_class(raceClass.id)
         for heat in classHeats:
-            stage = int(self.rh.api.db.heat_attribute_value(heat, Formats.HEAT_STAGE_ATTR_NAME, default_value=0))
+            stageAttr = self.rh.api.db.heat_attribute_value(heat, Formats.HEAT_STAGE_ATTR_NAME, default_value=0)
+            
+            #if this class does not have a heat stage attribute, it's likely that the user created it themselves. Let's attempt to use the naming convention to fix the stage attribute
+            if(stageAttr==None):
+                match = re.search(r'stage (\d+)', heat.name, re.IGNORECASE)
+                if match:
+                    self.rh.api.db.heat_alter(heat.id, attributes={Formats.HEAT_STAGE_ATTR_NAME:int(match.group(1))})
+                    stageAttr = int(match.group(1))
+                else:
+                    raise ValueError("Heat "+heat.name+" is missing a stage number. Please rename the stage to something like \"Stage 1 - Heat A\" and the stage will be detected automatically.")
+            
+            stage = int(stageAttr)
             if(not stage in stageHeats):
                 stageHeats[stage] = []
             heatResult = self.rh.api.db.heat_results(heat)
