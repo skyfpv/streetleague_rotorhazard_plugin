@@ -48,6 +48,8 @@ class EventManager():
         self.rh.api.ui.socket_listen("sl_get_pilot_colors", self.get_pilot_colors)
         self.rh.api.ui.socket_listen("sl_get_current_heat_results", self.handle_current_heat_results)
 
+
+
     def handle_race_lap_recorded(self, data):
         self.handle_race_timing(data)
         self.send_autopilot_trigger({"event_name": "lap_record"})
@@ -230,3 +232,4 @@ class EventManager():
 
     def send_race_countdown_warning(self, eventName):
         self.send_autopilot_trigger({"event_name": eventName})
+            
