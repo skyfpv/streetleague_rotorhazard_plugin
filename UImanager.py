@@ -4,30 +4,35 @@ from RHUI import UIField, UIFieldType, UIFieldSelectOption
 import logging
 logger = logging.getLogger(__name__)
 
-SETTINGS_PANEL_VALUE = "sl_settings_panel"
-SETTINGS_PANEL_LABEL = "Street League"
-SETTINGS_UPDATE_BUTTON_VALUE = "sl_update_plugin"
-SETTINGS_UPDATE_BUTTON_LABEL = "Update Plugin"
-SETTINGS_SYNC_BUTTON_VALUE = "sl_sync_plugin"
-SETTINGS_SYNC_BUTTON_LABEL = "Sync Pilot Info"
-SL_PILOT_ID_ATTR = "sl_pilot_id"
-
 class UImanager():
-
+    SETTINGS_PANEL_VALUE = "sl_settings_panel"
+    SETTINGS_PANEL_LABEL = "Street League"
+    SETTINGS_UPDATE_BUTTON_VALUE = "sl_update_plugin"
+    SETTINGS_UPDATE_BUTTON_LABEL = "Update Plugin"
+    SETTINGS_SYNC_BUTTON_VALUE = "sl_sync_plugin"
+    SETTINGS_SYNC_BUTTON_LABEL = "Sync Pilot Info"
+    SETTINGS_IMPORT_BUTTON_VALUE = "sl_import_race"
+    SETTINGS_IMPORT_BUTTON_LABEL = "Import Race"
+    SETTINGS_RACE_ID_FIELD_VALUE = "sl_race_id"
+    SETTINGS_RACE_ID_FIELD_LABEL = "Race ID"
+    SL_RACE_ID_VALUE = "sl_race_id"
+    SL_PILOT_ID_ATTR = "sl_pilot_id"
     def __init__(self, rhManager):
         self.rh = rhManager
 
-        self.sl_pilot_id_attr = SL_PILOT_ID_ATTR
-
         #register UI panels
-        self.rh.api.ui.register_panel(SETTINGS_PANEL_VALUE, SETTINGS_PANEL_LABEL, "settings", order=0)
+        self.rh.api.ui.register_panel(self.SETTINGS_PANEL_VALUE, self.SETTINGS_PANEL_LABEL, "settings", order=0)
 
-        #register buttons
-        self.rh.api.ui.register_quickbutton(SETTINGS_PANEL_VALUE, SETTINGS_UPDATE_BUTTON_VALUE, SETTINGS_UPDATE_BUTTON_LABEL, self.rh.update_plugin)
-        self.rh.api.ui.register_quickbutton(SETTINGS_PANEL_VALUE, SETTINGS_SYNC_BUTTON_VALUE, SETTINGS_SYNC_BUTTON_LABEL, self.rh.sync_pilot_info)
+        #settings panel items
+        self.rh.api.ui.register_quickbutton(self.SETTINGS_PANEL_VALUE, self.SETTINGS_UPDATE_BUTTON_VALUE, self.SETTINGS_UPDATE_BUTTON_LABEL, self.rh.update_plugin)
+        self.rh.api.ui.register_quickbutton(self.SETTINGS_PANEL_VALUE, self.SETTINGS_SYNC_BUTTON_VALUE, self.SETTINGS_SYNC_BUTTON_LABEL, self.rh.sync_pilots)
+        self.rh.api.ui.register_quickbutton(self.SETTINGS_PANEL_VALUE, self.SETTINGS_IMPORT_BUTTON_VALUE, self.SETTINGS_IMPORT_BUTTON_LABEL, self.rh.import_race)
+
+        raceIDField = UIField(name=self.SL_RACE_ID_VALUE, label="Race ID", desc="The ID of the race to import on streetleague.io.", field_type=UIFieldType.TEXT)
+        self.rh.api.fields.register_option(raceIDField, self.SETTINGS_PANEL_VALUE)
 
         #register pilot attributes
-        pilotIDField = UIField(name=SL_PILOT_ID_ATTR, label="SL Pilot ID", desc="The ID of the pilot on streetleague.io.", field_type=UIFieldType.TEXT)
+        pilotIDField = UIField(name=self.SL_PILOT_ID_ATTR, label="SL Pilot ID", desc="The ID of the pilot on streetleague.io.", field_type=UIFieldType.TEXT)
         self.rh.api.fields.register_pilot_attribute(pilotIDField)
 
         #register blueprints

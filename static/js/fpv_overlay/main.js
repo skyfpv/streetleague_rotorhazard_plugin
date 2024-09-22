@@ -14,7 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const socket = io();
 
-  overlayContainer.classList.remove("grid-cols-2");
   overlayContainer.classList.add("grid-cols-" + columns);
   console.log(overlayContainer);
 
