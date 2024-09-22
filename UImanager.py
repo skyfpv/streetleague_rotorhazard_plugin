@@ -17,6 +17,7 @@ class UImanager():
     SETTINGS_RACE_ID_FIELD_LABEL = "Race ID"
     SL_RACE_ID_VALUE = "sl_race_id"
     SL_PILOT_ID_ATTR = "sl_pilot_id"
+    PILOT_CHECKED_IN_ATTR = "sl_checked_in"
     def __init__(self, rhManager):
         self.rh = rhManager
 
@@ -35,11 +36,14 @@ class UImanager():
         pilotIDField = UIField(name=self.SL_PILOT_ID_ATTR, label="SL Pilot ID", desc="The ID of the pilot on streetleague.io.", field_type=UIFieldType.TEXT)
         self.rh.api.fields.register_pilot_attribute(pilotIDField)
 
+        pilotCheckinField = UIField(name=self.SL_PILOT_ID_ATTR, label="Check-In", field_type=UIFieldType.CHECKBOX, value=False)
+        self.rh.api.fields.register_pilot_attribute(pilotCheckinField)
+
         #register blueprints
         self.fpvOverlayBlueprint = Blueprint(
             'fpvoverlay',
             __name__,
-            template_folder='templates',
+            template_folder='pages',
             static_folder='static',
             static_url_path='/sl/static'
         )
@@ -47,7 +51,7 @@ class UImanager():
         self.autopilotBlueprint = Blueprint(
             'autopilot',
             __name__,
-            template_folder='templates',
+            template_folder='pages',
             static_folder='static',
             static_url_path='/sl/static'
         )
@@ -55,7 +59,7 @@ class UImanager():
         self.leaderboardBlueprint = Blueprint(
             'leaderboard',
             __name__,
-            template_folder='templates',
+            template_folder='pages',
             static_folder='static',
             static_url_path='/sl/static'
         )
@@ -63,12 +67,21 @@ class UImanager():
         self.rankOverlayBlueprint = Blueprint(
             'rankoverlay',
             __name__,
-            template_folder='templates',
+            template_folder='pages',
+            static_folder='static',
+            static_url_path='/sl/static'
+        )
+
+        self.preCheckBlueprint = Blueprint(
+            'precheck',
+            __name__,
+            template_folder='pages',
             static_folder='static',
             static_url_path='/sl/static'
         )
 
         self.setup_routes()
+        self.rh.api.ui.blueprint_add(self.preCheckBlueprint)
         self.rh.api.ui.blueprint_add(self.fpvOverlayBlueprint)
         self.rh.api.ui.blueprint_add(self.autopilotBlueprint)
         self.rh.api.ui.blueprint_add(self.leaderboardBlueprint)
@@ -91,10 +104,14 @@ class UImanager():
         def bp_autopilot_page():
             return self.render_template('autopilot.html')
         
-        @self.autopilotBlueprint.route('/sl/leaderboard')
+        @self.leaderboardBlueprint.route('/sl/leaderboard')
         def bp_leaderboard_page():
             return self.render_template('leaderboard.html')
         
-        @self.autopilotBlueprint.route('/sl/rankoverlay')
+        @self.rankOverlayBlueprint.route('/sl/rankoverlay')
         def bp_rankoverlay_page():
             return self.render_template('rank_overlay.html')
+        
+        @self.preCheckBlueprint.route('/sl/precheck')
+        def bp_rankoverlay_page():
+            return self.render_template('pre_check.html')

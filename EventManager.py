@@ -2,6 +2,7 @@ import json
 from time import monotonic
 from eventmanager import Evt
 import gevent.monkey
+from Database import ProgramMethod
 
 from .FormatManager import Formats # type: ignore
 gevent.monkey.patch_all()
@@ -47,6 +48,7 @@ class EventManager():
         self.rh.api.ui.socket_listen("sl_get_current_stage_times", self.get_current_stage_times)
         self.rh.api.ui.socket_listen("sl_get_pilot_colors", self.get_pilot_colors)
         self.rh.api.ui.socket_listen("sl_get_current_heat_results", self.handle_current_heat_results)
+        self.rh.api.ui.socket_listen("sl_pre_check_pilot", self.handle_pre_check_pilot)
 
 
 
@@ -233,3 +235,82 @@ class EventManager():
     def send_race_countdown_warning(self, eventName):
         self.send_autopilot_trigger({"event_name": eventName})
             
+    def handle_pre_check_pilot(self, args):
+        classId = self.rh.api.db.heat_by_id(self.rh.api.race.heat).class_id
+        heats = self.rh.api.db.heats_by_class(classId)
+        self.rh.log(heats)
+        slotFound = False
+        activeNodes = self.getActiveNodes()
+        for heat in heats:
+            if(slotFound):
+                break
+            self.rh.log(heat)
+            heatSlots = self.rh.api.db.slots_by_heat(heat.id)
+            #check if this pilot is already in the heat
+            pilotInHeat = self.pilotInHeatSlots(heatSlots, args)
+            
+            for heatSlot in heatSlots:
+                if(slotFound):
+                    break
+                self.rh.log(heatSlot)
+                
+                #check if this particular node is active in the frequency set
+                nodeActive = False
+                if(heatSlot.node_index!=None):
+                    if(len(activeNodes)>=heatSlot.node_index):
+                        nodeActive = activeNodes[heatSlot.node_index]
+
+                self.rh.log("slot: "+str(heatSlot.node_index)+", pilot: "+str(heatSlot.pilot_id)+" enabled: "+str(nodeActive))
+                if(heatSlot.pilot_id==0 and heatSlot.method == ProgramMethod.ASSIGN and nodeActive and pilotInHeat==False):
+                    self.rh.log("FOUND A SLOT!")
+                    slotFound = True
+                    self.addSLPilotToSlotIdByUUID(heatSlot.id, args)
+                    break
+        if(slotFound==False):
+            self.rh.log("No free slot found. Creating new heat")
+            heat = self.rh.api.db.heat_add(name=None, raceclass=classId, auto_frequency=True)
+            newHeatSlots = self.rh.api.db.slots_by_heat(heat.id)
+            self.addSLPilotToSlotIdByUUID(newHeatSlots[0].id, args)
+        self.rh.api.ui.broadcast_heats()
+    
+    def getPilotByUUID(self, slPilotId):
+        matchingPilots = self.rh.api.db.pilot_ids_by_attribute(self.rh.uiManager.SL_PILOT_ID_ATTR, slPilotId)
+        self.rh.log(matchingPilots)
+        #if we couldn't find a pilot with a matching SL ID, import a new user
+        if(matchingPilots==[]):
+            self.rh.log("SL pilot "+str(slPilotId)+" not found in db. Importing from streetleague.io")
+            pilotId = self.rh.api.db.pilot_add(name="", callsign="", phonetic=None, team=None, color="#000000").id
+            self.rh.api.db.pilot_alter(pilotId, attributes={self.rh.uiManager.SL_PILOT_ID_ATTR: slPilotId})
+            self.rh.sync_pilot(self.rh.api.db.pilot_by_id(pilotId))
+        else:
+            self.rh.log("SL pilot "+str(slPilotId)+" found with ID "+str(matchingPilots[0]))
+            pilotId = matchingPilots[0]
+        return self.rh.api.db.pilot_by_id(pilotId)
+
+    def pilotInHeatSlots(self, heatSlots, slPilotId):
+        pilotId = self.getPilotByUUID(slPilotId).id
+        for slot in heatSlots:
+            if(slot.pilot_id==pilotId):
+                return True
+        return False
+            
+    def addSLPilotToSlotIdByUUID(self, slotId, slPilotId):
+        self.rh.log("Adding SL pilot "+str(slPilotId)+" to slot ID "+str(slotId))
+        pilotId = self.getPilotByUUID(slPilotId).id
+        self.rh.api.db.slot_alter(slotId, method=ProgramMethod.ASSIGN, pilot=pilotId, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None)
+
+    def getActiveNodes(self):
+        activeNodes = []
+        frequencySet = self.rh.api.race.frequencyset
+        self.rh.log("frequencySet -> "+str(frequencySet.id))
+        profile = self.rh.api.db.frequencyset_by_id(frequencySet.id)
+        self.rh.log("proifle -> "+str(profile))
+        self.rh.log("frequencies -> "+str(profile.frequencies))
+        self.rh.log("f -> "+str(profile.frequencies))
+        freqs = json.loads(profile.frequencies)["f"]
+        for freq in freqs:
+            activeNodes.append(freq!=0)
+        self.rh.log(activeNodes)
+        return activeNodes
+
+
