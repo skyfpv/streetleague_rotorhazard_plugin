@@ -49,6 +49,7 @@ class EventManager():
         self.rh.api.ui.socket_listen("sl_get_pilot_colors", self.get_pilot_colors)
         self.rh.api.ui.socket_listen("sl_get_current_heat_results", self.handle_current_heat_results)
         self.rh.api.ui.socket_listen("sl_pre_check_pilot", self.handle_pre_check_pilot)
+        self.rh.api.ui.socket_listen("sl_pre_check_get_pilot_info", self.handle_pre_check_get_pilot_info)
 
 
 
@@ -139,7 +140,11 @@ class EventManager():
         if(self.rh.api.race.heat != 0):
             for index in self.rh.api.race.pilots:
                 pilot = self.rh.api.db.pilot_by_id(self.rh.api.race.pilots[index])
-                seatColor = self.rh.api.race.seat_colors[index]
+                #seatColor = self.rh.api.race.seat_colors[index]
+                if(pilot != None):
+                    seatColor = pilot.color
+                else:
+                    seatColor = "#555555"
                 seatActive = (frequencies['b'][index] != None)
                 if pilot == None:
                     pilotDictItem = {
@@ -235,10 +240,17 @@ class EventManager():
     def send_race_countdown_warning(self, eventName):
         self.send_autopilot_trigger({"event_name": eventName})
             
+    def handle_pre_check_get_pilot_info(self, args):
+        pilot = self.getPilotByUUID(args["slPilotId"])
+        if(pilot!=None):
+            self.rh.api.ui.socket_broadcast("sl_pre_check_pilot_info", {"requestId": args["requestId"], "pilot": {"id": pilot.id, "slPilotId": args["slPilotId"], "name": pilot.name, "callsign": pilot.callsign, "team": pilot.team, "color": pilot.color, "used_frequencies": pilot.used_frequencies}})
+        else:
+            self.rh.api.ui.socket_broadcast("sl_pre_check_pilot_info", {"requestId": args["requestId"], "pilot": None})
+
     def handle_pre_check_pilot(self, args):
         classId = self.rh.api.db.heat_by_id(self.rh.api.race.heat).class_id
         heats = self.rh.api.db.heats_by_class(classId)
-        self.rh.log(heats)
+        self.rh.log("handle_pre_check_pilot: "+str(args))
         slotFound = False
         activeNodes = self.getActiveNodes()
         for heat in heats:
@@ -247,31 +259,35 @@ class EventManager():
             self.rh.log(heat)
             heatSlots = self.rh.api.db.slots_by_heat(heat.id)
             #check if this pilot is already in the heat
-            pilotInHeat = self.pilotInHeatSlots(heatSlots, args)
+            pilotInHeat = self.pilotInHeatSlots(heatSlots, args["slPilotId"])
             
-            for heatSlot in heatSlots:
-                if(slotFound):
-                    break
-                self.rh.log(heatSlot)
-                
-                #check if this particular node is active in the frequency set
-                nodeActive = False
-                if(heatSlot.node_index!=None):
-                    if(len(activeNodes)>=heatSlot.node_index):
-                        nodeActive = activeNodes[heatSlot.node_index]
+            #ensure the heat hasn't already been run. Can't use status as it's unreliable
+            if(self.rh.api.db.heat_max_round(heat.id)<1 and heat.id!=self.rh.api.race.heat):
+                for heatSlot in heatSlots:
+                    if(slotFound):
+                        break
+                    self.rh.log(heatSlot)
+                    
+                    #check if this particular node is active in the frequency set
+                    nodeActive = False
+                    if(heatSlot.node_index!=None):
+                        if(len(activeNodes)>=heatSlot.node_index):
+                            nodeActive = activeNodes[heatSlot.node_index]
 
-                self.rh.log("slot: "+str(heatSlot.node_index)+", pilot: "+str(heatSlot.pilot_id)+" enabled: "+str(nodeActive))
-                if(heatSlot.pilot_id==0 and heatSlot.method == ProgramMethod.ASSIGN and nodeActive and pilotInHeat==False):
-                    self.rh.log("FOUND A SLOT!")
-                    slotFound = True
-                    self.addSLPilotToSlotIdByUUID(heatSlot.id, args)
-                    break
+                    self.rh.log("slot: "+str(heatSlot.node_index)+", pilot: "+str(heatSlot.pilot_id)+" enabled: "+str(nodeActive))
+                    if(heatSlot.pilot_id==0 and heatSlot.method == ProgramMethod.ASSIGN and nodeActive and pilotInHeat==False):
+                        self.rh.log("FOUND A SLOT!")
+                        self.rh.log("heat status is "+str(heat.status))
+                        slotFound = True
+                        self.addSLPilotToSlotIdByUUID(heat, heatSlot, args["slPilotId"], args["requestId"])
+                        break
         if(slotFound==False):
             self.rh.log("No free slot found. Creating new heat")
-            heat = self.rh.api.db.heat_add(name=None, raceclass=classId, auto_frequency=True)
+            heat = self.rh.api.db.heat_add(name=None, raceclass=classId, auto_frequency=False)
             newHeatSlots = self.rh.api.db.slots_by_heat(heat.id)
-            self.addSLPilotToSlotIdByUUID(newHeatSlots[0].id, args)
+            self.addSLPilotToSlotIdByUUID(heat, newHeatSlots[0], args["slPilotId"], args["requestId"])
         self.rh.api.ui.broadcast_heats()
+
     
     def getPilotByUUID(self, slPilotId):
         matchingPilots = self.rh.api.db.pilot_ids_by_attribute(self.rh.uiManager.SL_PILOT_ID_ATTR, slPilotId)
@@ -282,6 +298,11 @@ class EventManager():
             pilotId = self.rh.api.db.pilot_add(name="", callsign="", phonetic=None, team=None, color="#000000").id
             self.rh.api.db.pilot_alter(pilotId, attributes={self.rh.uiManager.SL_PILOT_ID_ATTR: slPilotId})
             self.rh.sync_pilot(self.rh.api.db.pilot_by_id(pilotId))
+            if(self.rh.api.db.pilot_by_id(pilotId).callsign==""):
+                self.rh.log("unable to find pilot with SL id: "+slPilotId)
+                self.rh.api.db.pilot_delete(pilotId)
+                return None
+            self.rh.log("callsign: \""+self.rh.api.db.pilot_by_id(pilotId).callsign+"\"")
         else:
             self.rh.log("SL pilot "+str(slPilotId)+" found with ID "+str(matchingPilots[0]))
             pilotId = matchingPilots[0]
@@ -294,10 +315,14 @@ class EventManager():
                 return True
         return False
             
-    def addSLPilotToSlotIdByUUID(self, slotId, slPilotId):
-        self.rh.log("Adding SL pilot "+str(slPilotId)+" to slot ID "+str(slotId))
-        pilotId = self.getPilotByUUID(slPilotId).id
-        self.rh.api.db.slot_alter(slotId, method=ProgramMethod.ASSIGN, pilot=pilotId, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None)
+    def addSLPilotToSlotIdByUUID(self, heat, slot, slPilotId, requestId):
+        self.rh.log("Adding SL pilot "+str(slPilotId)+" to slot ID "+str(slot.id))
+        pilot = self.getPilotByUUID(slPilotId)
+        self.rh.api.db.slot_alter(slot.id, method=ProgramMethod.ASSIGN, pilot=pilot.id, seed_heat_id=None, seed_raceclass_id=None, seed_rank=None)
+        pilotInfo = {"id": pilot.id, "slPilotId": slPilotId, "name": pilot.name, "callsign": pilot.callsign, "team": pilot.team, "color": pilot.color}
+        heatInfo = {"id": heat.id, "name": heat.name, "class_id": heat.class_id, "results": heat.results, "status": heat.status}
+        self.rh.api.ui.socket_broadcast("sl_pre_check_join_confirm", {"requestId": requestId, "heat": heatInfo, "pilot": pilotInfo, "channelInfo": self.getSlotChannel(slot)})
+
 
     def getActiveNodes(self):
         activeNodes = []
@@ -313,4 +338,10 @@ class EventManager():
         self.rh.log(activeNodes)
         return activeNodes
 
-
+    def getSlotChannel(self, slot):
+        frequencySet = self.rh.api.race.frequencyset
+        profile = self.rh.api.db.frequencyset_by_id(frequencySet.id)
+        freq = json.loads(profile.frequencies)["f"][slot.node_index]
+        band = json.loads(profile.frequencies)["b"][slot.node_index]
+        channel = json.loads(profile.frequencies)["c"][slot.node_index]
+        return {"frequency": freq, "band": band, "channel": channel}

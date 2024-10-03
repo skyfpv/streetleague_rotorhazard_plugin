@@ -1,31 +1,104 @@
 <!-- Index.html file -->
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet"
-          href="style.css">
-    <title>QR Code Scanner / Reader
-    </title>
-</head>
+    <title>Pre-Check</title>
+    <script src="/sl/static/css/tailwind.css"></script>
+    <link href="/sl/static/css/global.css" rel="stylesheet" />
+  </head>
 
-<body>
-    <div class="container">
-        <h1>Scan QR Codes</h1>
-        <div class="section">
-            <div id="my-qr-reader">
-            </div>
-        </div>
+  <body class="w-full m-0 bg-slate-700">
+    <div class="flex w-full">
+      <div class="basis-1/3"></div>
+      <div
+        id="header"
+        class="basis-1/3 bg-gray-800 rounded-b-xl p-4 text-gray-100 font-bold mb-2 text-3xl text-center border-b-4 border-gray-600"
+      >
+        Scan badge to race
+      </div>
+      <div class="basis-1/3"></div>
     </div>
-    <script type="text/javascript" src="/sl/static/js/pre_check/html5-qrcode.min.js"></script>
+    <div class="w-full">
+      <div id="scanner-container" class="flex w-full">
+        <div class="basis-1/3"></div>
+        <div class="basis-1/3">
+          <div
+            id="scanning-status"
+            class="bg-red-500 text-gray-100 font-bold py-2 px-4 rounded-t flex-auto"
+          >
+            Loading...
+          </div>
+          <div id="qr-scanner" class="w[100px]"></div>
+          <div id="cancel-container" class="hidden">
+            <button
+              id="cancel"
+              class="bg-gray-500 hover:bg-red-500 text-gray-100 font-bold py-2 px-4 rounded-b w-full"
+            >
+              Cancel
+            </button>
+          </div>
+          <ol
+            id="origin-warning"
+            class="text-gray-700 font-bold py-2 px-4 rounded hidden"
+          >
+            <li>To enable webcam access for RotorHazard, you must</li>
+            <li>
+              - Go to "chrome://flags/#unsafely-treat-insecure-origin-as-secure"
+            </li>
+            <li>- Enable "Insecure origins treated as secure"</li>
+            <li>- Add "http://rotorhazard.local" to the list of origins</li>
+            <li>- Click relaunch</li>
+          </ol>
+        </div>
+        <div class="basis-1/3"></div>
+      </div>
+    </div>
+    <div id="heat-selection" class="inline m-2">
+      <!-- <table
+        id="heat-table"
+        class="min-w-full bg-white shadow-md rounded-lg table-fixed"
+        
+      > -->
+      <table id="heat-table" class="bg-white shadow-md table-fixed w-full">
+        <thead id="heat-table-head">
+          <tr class="bg-gray-800 text-white">
+            <th>Heat Name</th>
+            <th>Slot 1</th>
+            <th>Slot 2</th>
+            <th>Slot 3</th>
+            <th>Slot 4</th>
+            <th>Slot 5</th>
+            <th>Slot 6</th>
+            <th>Slot 7</th>
+            <th>Slot 8</th>
+          </tr>
+        </thead>
+        <tbody id="heat-table-body"></tbody>
+      </table>
+    </div>
+    <div id="pilot-controls" class="hidden w-full justify-center m-2">
+      <div class="basis-1/3"></div>
+      <div class="flex justify-center basis-1/3">
+        <button
+          id="done"
+          class="bg-red-500 hover:opacity-75 text-gray-100 font-bold py-2 px-4 rounded flex-auto m-2"
+        >
+          Log Out
+        </button>
+      </div>
+      <div class="basis-1/3"></div>
+    </div>
+    <script
+      type="text/javascript"
+      src="/sl/static/js/pre_check/html5-qrcode.min.js"
+    ></script>
     <script type="module" src="/sl/static/js/pre_check/main.js"></script>
     <script
       type="text/javascript"
       src="/static/socket.io-4.6.1/socket.io.min.js"
     ></script>
-</body>
-
+  </body>
 </html>

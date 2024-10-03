@@ -36,7 +36,7 @@ class UImanager():
         pilotIDField = UIField(name=self.SL_PILOT_ID_ATTR, label="SL Pilot ID", desc="The ID of the pilot on streetleague.io.", field_type=UIFieldType.TEXT)
         self.rh.api.fields.register_pilot_attribute(pilotIDField)
 
-        pilotCheckinField = UIField(name=self.SL_PILOT_ID_ATTR, label="Check-In", field_type=UIFieldType.CHECKBOX, value=False)
+        pilotCheckinField = UIField(name=self.PILOT_CHECKED_IN_ATTR, label="Check-In", field_type=UIFieldType.CHECKBOX, value=False)
         self.rh.api.fields.register_pilot_attribute(pilotCheckinField)
 
         #register blueprints
