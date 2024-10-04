@@ -42,6 +42,7 @@ const RACE_STATUS_DONE = 2;
 let currentPilot = undefined;
 let cameraId = undefined;
 let maxJoinCount = params.get("maxJoins") || 3;
+let cameraIndex = params.get("cameraIndex") || 0;
 
 let pilots = [{ pilot_id: 0, callsign: "", team: "A", name: "" }];
 let heatData = { heats: [] };
@@ -406,7 +407,7 @@ function pilotJoinHeatSlot(heat, slot) {
   }
 
   //if the pilot has not already joined the max number of heats, add them
-  if (getPilotRegistrationCount() <= maxJoinCount) {
+  if (getPilotRegistrationCount() < maxJoinCount) {
     let alteredSlot = {
       heat: heat.id,
       slot_id: slot.id,
@@ -521,7 +522,7 @@ domReady(function () {
        * { id: "id", label: "label" }
        */
       if (devices && devices.length) {
-        cameraId = devices[0].id;
+        cameraId = devices[cameraIndex].id;
         setState(STATE_SCANNING);
         // .. use this to start scanning.
       }
