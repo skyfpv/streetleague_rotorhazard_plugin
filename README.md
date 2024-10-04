@@ -17,7 +17,7 @@ Similar to Mario Kart, pilots earn points by setting the fastest time they can i
         ```rm -rf streetleague_rotorhazard_plugin```
     - Download the latest plugin
 
-        ```git clone https://github.com/skyfpv/streetleague_rotorhazard_plugin.git```
+        ```sudo git clone https://github.com/skyfpv/streetleague_rotorhazard_plugin.git```
 
 5. Restart your rotorhazard
 

@@ -1,4 +1,5 @@
-pilotPhotos/
+static/img/pilotPhotos/*
+!static/img/pilotPhotos/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
