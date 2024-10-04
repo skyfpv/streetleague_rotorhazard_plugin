@@ -132,11 +132,29 @@ class RHmanager():
         self.log("current directory: "+current_dir)
         plugin_relative_path = "plugins/streetleague_rotorhazard_plugin"
         plugin_path = os.path.join(current_dir, plugin_relative_path)
+        # try:
+        #     # Pull the latest code from the main branch
+        #     self.log("git reset --hard HEAD"])
+        #     result = subprocess.run(
+        #         ["git", "reset", "--hard", "HEAD"],
+        #         check=True,
+        #         cwd=plugin_path,
+        #         stdout=subprocess.PIPE,
+        #         stderr=subprocess.PIPE,
+        #         text=True
+        #     )
+        #     self.log(result.stdout)
+        # except subprocess.CalledProcessError as e:
+        #     self.log(e.output)
+        #     self.log(e.stderr)
+        #     self.log(f"An error occurred while updating the plugin: {e}")
+        #     self.api.ui.message_alert("An error occurred while updating the plugin. Please check logs.")
+
+        # Pull the latest code from the main branch
         try:
-            # Pull the latest code from the main branch
-            self.log(["git", "reset", "--hard", "HEAD"])
+            self.log(["git fetch"])
             result = subprocess.run(
-                ["git", "reset", "--hard", "HEAD"],
+                ["git", "fetch"],
                 check=True,
                 cwd=plugin_path,
                 stdout=subprocess.PIPE,
@@ -145,20 +163,9 @@ class RHmanager():
             )
             self.log(result.stdout)
 
-            self.log(["git", "checkout", "main"])
+            self.log(["git pull"])
             result = subprocess.run(
-                ["git", "reset", "--hard", "HEAD"],
-                check=True,
-                cwd=plugin_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            self.log(result.stdout)
-
-            self.log(["git", "pull", "origin", "main"])
-            result = subprocess.run(
-                ["git", "pull", "origin", "main"],
+                ["git", "pull"],
                 check=True,
                 cwd=plugin_path,
                 stdout=subprocess.PIPE,
