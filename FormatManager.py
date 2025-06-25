@@ -138,6 +138,119 @@ class FormatManager():
                 if(classId==raceClass.id):
                     outputClassIndex = i
         return outputClassIndex
+    
+    #returns a dict of stages containing sorted stage heats
+    #for each stage, this method checks meta.primary_leaderboard and sorts the heats in that object
+    def sortStageHeats(self, stageHeats):
+        for race_id, race_info in stageHeats.items():
+
+            #by_race_time
+            pilots = race_info["by_race_time"]
+
+            # Sort by: most starts, most laps, then least total time
+            pilots.sort(key=lambda p: (-p["starts"], -p["laps"], p["total_time_raw"]))
+
+            # Filter only those who started
+            starters = [p for p in pilots if p["starts"] > 0]
+            total_starters = len(starters)
+
+            starter_rank = 1  # Track finishing place among starters
+
+            for idx, pilot in enumerate(pilots):
+                pilot["position"] = idx + 1
+
+                if pilot["starts"] == 0:
+                    pilot["points"] = 0
+                else:
+                    # Highest finisher among starters gets the most points
+                    pilot["points"] = total_starters - (starter_rank - 1)
+                    starter_rank += 1
+
+            #by_fastest_lap
+            pilots = race_info["by_fastest_lap"]
+
+            # Sort by: most starts, most laps, then least total time
+            pilots.sort(key=lambda p: (p["starts"], -p["fastest_lap_raw"]))
+
+            # Filter only those who started
+            starters = [p for p in pilots if p["starts"] > 0]
+            total_starters = len(starters)
+
+            starter_rank = 1  # Track finishing place among starters
+
+            for idx, pilot in enumerate(pilots):
+                pilot["position"] = idx + 1
+
+                if pilot["starts"] == 0:
+                    pilot["points"] = 0
+                else:
+                    # Highest finisher among starters gets the most points
+                    pilot["points"] = total_starters - (starter_rank - 1)
+                    starter_rank += 1
+
+            #by_consecutives
+            pilots = race_info["by_consecutives"]
+
+            # Sort by: most starts, most laps, then least total time
+            pilots.sort(key=lambda p: (p["starts"], p["consecutives_base"], -p["consecutives_raw"] if p["consecutives_raw"] is not None else float('inf')))
+
+            # Filter only those who started
+            starters = [p for p in pilots if p["starts"] > 0]
+            total_starters = len(starters)
+
+            starter_rank = 1  # Track finishing place among starters
+
+            for idx, pilot in enumerate(pilots):
+                pilot["position"] = idx + 1
+
+                if pilot["starts"] == 0:
+                    pilot["points"] = 0
+                else:
+                    # Highest finisher among starters gets the most points
+                    pilot["points"] = total_starters - (starter_rank - 1)
+                    starter_rank += 1
+
+    def generate_leaderboard(self, data):
+        from collections import defaultdict
+
+        leaderboard = {}
+        
+        for stage_num, race_info in data.items():
+            stage_key = f"stage {stage_num}"
+            
+            for pilot in race_info["by_race_time"]:
+                pilot_id = pilot["pilot_id"]
+                callsign = pilot["callsign"]
+                stage_points = pilot.get("points", 0)
+
+                if pilot_id not in leaderboard:
+                    leaderboard[pilot_id] = {
+                        "pilot_id": pilot_id,
+                        "callsign": callsign,
+                        "points": 0
+                    }
+
+                leaderboard[pilot_id]["points"] += stage_points
+                leaderboard[pilot_id][stage_key] = stage_points
+
+        # Convert dict to list and fill in missing stages with 0s
+        stage_keys = [f"stage {stage_num}" for stage_num in sorted(data.keys())]
+        leaderboard_list = []
+
+        for entry in leaderboard.values():
+            for stage in stage_keys:
+                if stage not in entry:
+                    entry[stage] = 0
+            leaderboard_list.append(entry)
+
+        # Sort by total points descending, then callsign for tie-breaker
+        leaderboard_list.sort(key=lambda x: (-x["points"], x["callsign"]))
+
+        # Assign positions
+        for idx, entry in enumerate(leaderboard_list):
+            entry["position"] = idx + 1
+
+        return leaderboard_list
 
     def getStageHeatsByClassId(self, raceClass):
         stageHeats = {}
@@ -155,11 +268,14 @@ class FormatManager():
                     raise ValueError("Heat "+heat.name+" is missing a stage number. Please rename the stage to something like \"Stage 1 - Heat A\" and the stage will be detected automatically.")
             
             stage = int(stageAttr)
-            if(not stage in stageHeats):
-                stageHeats[stage] = []
             heatResult = self.rh.api.db.heat_results(heat)
+            if(not stage in stageHeats):
+                stageHeats[stage] = {"by_race_time": [], "by_fastest_lap": [], "by_consecutives": [], "meta": heatResult["meta"]}
+
             if(heatResult!=None):
-                stageHeats[stage].append(heatResult)
+                stageHeats[stage]["by_race_time"].extend(heatResult["by_race_time"])
+                stageHeats[stage]["by_fastest_lap"].extend(heatResult["by_fastest_lap"])
+                stageHeats[stage]["by_consecutives"].extend(heatResult["by_consecutives"])
         return stageHeats
 
     def handleDidNotStart(self, stageLeaderboard, raceClassId):
@@ -206,75 +322,91 @@ class FormatManager():
         self.rh.log("- active: "+str(raceClass.active))
         classPilots = self.getPilotsInClass(raceClass.id)
         self.rh.log(classPilots)
+        for pilot in classPilots:
+            self.rh.log("- "+pilot.callsign)
         stageLeaderboards = {} #contains stage lists which have pilots sorted by race time
         stagePointsByPilotId = {}
         heatsByStage = self.getStageHeatsByClassId(raceClass)
+        self.rh.log("heatsByStage\n"+str(heatsByStage))
+        self.sortStageHeats(heatsByStage)
         totalPointsByPilotId = {}
-        leaderboard = []
+        leaderboard = self.generate_leaderboard(heatsByStage)
 
-        #initialize the leaderboard for all pilots
-        for pilot in classPilots:
-            totalPointsByPilotId[pilot.id] = 0
-            stagePointsByPilotId[pilot.id] = []
-
-        #create a list of leaderboards seperated by stage
-        for stage in heatsByStage:
-            stageLeaderboard = []
-            #add all the pilot laps and times to the stage leaderboard
-            for heatResult in heatsByStage[stage]:
-                for pilotResult in heatResult["by_race_time"]: #TO-DO: THERE'S PROBLY A BUG HERE. PILOTS WITH NO HOLESHOT ARE NOT INCLUDED IN THE HEAT RESULTS
-                    laps = pilotResult.get("laps")
-                    totalTimeRaw = pilotResult.get("total_time_raw")
-                    totalTime = pilotResult.get("total_time")
-                    pilotId = pilotResult.get("pilot_id")
-                    callsign = pilotResult.get("callsign")
-                    stageLeaderboard.append({"pilot_id": pilotId, "callsign": callsign, "laps": laps, "total_time_raw": totalTimeRaw, "total_time":totalTime})
-            
-            #sort this stage leaderboard so that we can easily award points
-            stageLeaderboard = self.sortByLapsThenTime(stageLeaderboard)
-
-            #award points for the stage
-            for i in range(0,len(stageLeaderboard)):
-                stageLeaderboard[i]["points"] = len(stageLeaderboard)-i
-
-            #add the stage leaderboard to the dict of stage leaderboards
-            stageLeaderboards[stage] = stageLeaderboard
-
-        #sum up each pilot's stage points to get their total points
-        for stage in stageLeaderboards:
-            stageLeaderboard = stageLeaderboards[stage]
-            stageLeaderboard = self.handleDidNotStart(stageLeaderboard,raceClass.id)
-            for pilotResult in stageLeaderboard:
-                #if the pilot never started the race
-                if(pilotResult.get("points")==0):
-                    #mark them as a DNS
-                    stagePointsByPilotId[pilotResult.get("pilot_id")].append("dns")
-                #otherwise
-                else:
-                    #add their stage points to their total points and mark the points for this stage
-                    totalPointsByPilotId[pilotResult.get("pilot_id")]+=pilotResult.get("points")
-                    stagePointsByPilotId[pilotResult.get("pilot_id")].append(pilotResult.get("points"))
-
-        #fill leaderboard with pilot entries
-        for pilotId in totalPointsByPilotId:
-            pilot = self.rh.api.db.pilot_by_id(pilotId)
-            points = totalPointsByPilotId[pilotId]
-            leaderboardResult = {"position": 0, "points": points, "pilot_id": pilot.id, "callsign": pilot.callsign}
-            
-            #add each stage column to the leaderboard so pilot points can be viewed for each stage
-            for stageIndex in range(0,len(stagePointsByPilotId[pilot.id])):
-                leaderboardResult["stage "+str(stageIndex+1)] = stagePointsByPilotId[pilot.id][stageIndex]
-
-            leaderboard.append(leaderboardResult)
-
-        #sort the leaderboard by pilots total points
-        leaderboard = self.sortByPoints(leaderboard)
+        self.rh.log("sortedHeatsByStage\n"+str(heatsByStage))
 
         rankFields = []
-        for stage in stageLeaderboards:
+        for stage in heatsByStage:
             rankFields.append({"name": "stage "+str(stage), "label":"Stage "+str(stage)})
         rankFields.append({"name": "points", "label":"Total Points"})
+        self.rh.log("leaderboard\n"+str(leaderboard))
+
+
         return (leaderboard, {"method_label": "Total Stage Points", "rank_fields": rankFields})
+
+        # #initialize the leaderboard for all pilots
+        # for pilot in classPilots:
+        #     totalPointsByPilotId[pilot.id] = 0
+        #     stagePointsByPilotId[pilot.id] = []
+
+        # #create a list of leaderboards seperated by stage
+        # for stage in heatsByStage:
+        #     stageLeaderboard = []
+        #     #add all the pilot laps and times to the stage leaderboard
+        #     for heatResult in heatsByStage[stage]:
+        #         for pilotResult in heatResult["by_race_time"]: #TO-DO: THERE'S PROBLY A BUG HERE. PILOTS WITH NO HOLESHOT ARE NOT INCLUDED IN THE HEAT RESULTS
+        #             laps = pilotResult.get("laps")
+        #             totalTimeRaw = pilotResult.get("total_time_raw")
+        #             totalTime = pilotResult.get("total_time")
+        #             pilotId = pilotResult.get("pilot_id")
+        #             callsign = pilotResult.get("callsign")
+        #             stageLeaderboard.append({"pilot_id": pilotId, "callsign": callsign, "laps": laps, "total_time_raw": totalTimeRaw, "total_time":totalTime})
+            
+        #     #sort this stage leaderboard so that we can easily award points
+        #     stageLeaderboard = self.sortByLapsThenTime(stageLeaderboard)
+
+        #     #award points for the stage
+        #     for i in range(0,len(stageLeaderboard)):
+        #         stageLeaderboard[i]["points"] = len(stageLeaderboard)-i
+
+        #     #add the stage leaderboard to the dict of stage leaderboards
+        #     stageLeaderboards[stage] = stageLeaderboard
+
+        # #sum up each pilot's stage points to get their total points
+        # for stage in stageLeaderboards:
+        #     stageLeaderboard = stageLeaderboards[stage]
+        #     stageLeaderboard = self.handleDidNotStart(stageLeaderboard,raceClass.id)
+        #     for pilotResult in stageLeaderboard:
+        #         #if the pilot never started the race
+        #         if(pilotResult.get("points")==0):
+        #             #mark them as a DNS
+        #             stagePointsByPilotId[pilotResult.get("pilot_id")].append("dns")
+        #         #otherwise
+        #         else:
+        #             #add their stage points to their total points and mark the points for this stage
+        #             totalPointsByPilotId[pilotResult.get("pilot_id")]+=pilotResult.get("points")
+        #             stagePointsByPilotId[pilotResult.get("pilot_id")].append(pilotResult.get("points"))
+
+        # #fill leaderboard with pilot entries
+        # for pilotId in totalPointsByPilotId:
+        #     pilot = self.rh.api.db.pilot_by_id(pilotId)
+        #     points = totalPointsByPilotId[pilotId]
+        #     leaderboardResult = {"position": 0, "points": points, "pilot_id": pilot.id, "callsign": pilot.callsign}
+            
+        #     #add each stage column to the leaderboard so pilot points can be viewed for each stage
+        #     for stageIndex in range(0,len(stagePointsByPilotId[pilot.id])):
+        #         leaderboardResult["stage "+str(stageIndex+1)] = stagePointsByPilotId[pilot.id][stageIndex]
+
+        #     leaderboard.append(leaderboardResult)
+
+        # #sort the leaderboard by pilots total points
+        # leaderboard = self.sortByPoints(leaderboard)
+
+        # rankFields = []
+        # for stage in stageLeaderboards:
+        #     rankFields.append({"name": "stage "+str(stage), "label":"Stage "+str(stage)})
+        # rankFields.append({"name": "points", "label":"Total Points"})
+        # self.rh.log("leaderboard\n"+str(leaderboard))
+        # return (leaderboard, {"method_label": "Total Stage Points", "rank_fields": rankFields})
 
     #points race heat generator
     def StreetLeaguePointsGenerator(self, rhapi, args):
