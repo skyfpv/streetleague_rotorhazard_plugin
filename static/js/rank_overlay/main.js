@@ -140,6 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function parseHeatResults(heatResults, active) {
     const parsedResults = [];
+    console.log("heatResult = ", heatResults);
     heatResults.map((heatResult, heatResultIndex) => {
       parsedResults.push({
         pilot_id: heatResult.pilot_id,
@@ -209,15 +210,27 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateStageTimes() {
+    console.log("lastStageTimes = ", lastStageTimes);
     stageTimes = [];
-    lastStageTimes.map((heat, heatIndex) => {
-      const primaryLeaderboard = heat.meta.primary_leaderboard;
-      const heatResults = heat[primaryLeaderboard];
-      parseHeatResults(heatResults, false).map((result) => {
-        stageTimes.push(result);
+    if(lastStageTimes.length > 0){
+      const primaryLeaderboard = lastStageTimes.meta.primary_leaderboard;
+
+      
+      lastStageTimes[primaryLeaderboard].map((heatResult, heatIndex) => {
+          const result = {
+            pilot_id: heatResult.pilot_id,
+            callsign: heatResult.callsign,
+            starts: heatResult.starts,
+            laps: heatResult.laps,
+            progress: heatResult.starts + heatResult.laps,
+            time: heatResult.total_time_raw,
+            pace: heatResult.total_time_raw / (heatResult.laps + heatResult.starts)
+            //active: active
+          }
+          stageTimes.push(result);
       });
-    });
-    stageTimes = sortTimes(stageTimes);
+      stageTimes = sortTimes(stageTimes);
+    }
   }
 
   function createLeaderboard() {
@@ -268,7 +281,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function calculateInterval(seat, seatIndex) {
-    let interval = new Date(seat.time).toISOString().slice(14, 22);
+    let interval = new Date(seat.time).toISOString().slice(15, 22);
 
     //the first pilot is the leader, leave their interval alone
     if (seatIndex != 0) {
@@ -280,10 +293,13 @@ document.addEventListener("DOMContentLoaded", () => {
         //So all we know is that his interval is at minimum the duration between his rivals last lap time and now
         gap = raceCurrentTime - rival.pace * leastProgress;
       }
+      if(gap<0) {
+        gap = 0;
+      }
       interval = "+" + (gap / 1000).toFixed(2);
 
       if (isNaN(rival.pace) || isNaN(seat.pace)) {
-        interval = new Date(seat.time).toISOString().slice(14, 22);
+        interval = new Date(seat.time).toISOString().slice(15, 22);
       }
     } else {
       if (isNaN(seat.pace)) {

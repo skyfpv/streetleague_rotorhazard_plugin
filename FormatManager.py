@@ -5,6 +5,7 @@ from Database import HeatAdvanceType
 from Results import RaceClassRankMethod
 from eventmanager import Evt
 import re
+import json
 
 
 #FieldNames
@@ -269,13 +270,19 @@ class FormatManager():
             
             stage = int(stageAttr)
             heatResult = self.rh.api.db.heat_results(heat)
-            if(not stage in stageHeats):
-                stageHeats[stage] = {"by_race_time": [], "by_fastest_lap": [], "by_consecutives": [], "meta": heatResult["meta"]}
+            self.rh.log("class = ...\n"+str(raceClass.name))
+            self.rh.log("heat = ...\n"+str(heat.name))
+            self.rh.log("stage = ...\n"+str(stage))
+            self.rh.log("heatResults = ...\n"+json.dumps(heatResult,indent=4))
+            if(not stage in stageHeats and heatResult!=None):
+
+                stageHeats[stage] = {"by_race_time": [], "by_fastest_lap": [], "by_consecutives": [], "meta": {}}
 
             if(heatResult!=None):
                 stageHeats[stage]["by_race_time"].extend(heatResult["by_race_time"])
                 stageHeats[stage]["by_fastest_lap"].extend(heatResult["by_fastest_lap"])
                 stageHeats[stage]["by_consecutives"].extend(heatResult["by_consecutives"])
+                stageHeats[stage]["meta"] = heatResult["meta"]
         return stageHeats
 
     def handleDidNotStart(self, stageLeaderboard, raceClassId):

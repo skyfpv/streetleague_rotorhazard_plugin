@@ -96,8 +96,9 @@ class EventManager():
                     else:
                         currentClass = self.rh.api.db.raceclass_by_id(currentHeat.class_id)
                         classStages = self.rh.formatManager.getStageHeatsByClassId(currentClass)
-                        self.rh.api.ui.socket_broadcast("sl_current_stage_times", classStages[int(currentStageNumber)])
-                        self.handle_race_timing(None)
+                        if int(currentStageNumber) in classStages:
+                            self.rh.api.ui.socket_broadcast("sl_current_stage_times", classStages[int(currentStageNumber)])
+                            self.handle_race_timing(None)
             else:
                 self.rh.api.ui.socket_broadcast("sl_current_stage_times", [])
                 self.handle_race_timing(None)
@@ -129,8 +130,10 @@ class EventManager():
         self.handle_get_seat_info()
 
     def handle_get_leaderboard(self, data):
-        raceRanks = self.rh.api.eventresults.results["classes"][int(data["classId"])]
-        self.rh.api.ui.socket_broadcast("sl_leaderboard", raceRanks)
+        raceClasses = self.rh.api.eventresults.results["classes"]
+        if int(data["classId"]) in raceClasses:
+            raceRanks = raceClasses[int(data["classId"])]
+            self.rh.api.ui.socket_broadcast("sl_leaderboard", raceRanks)
 
     def handle_get_seat_info(self, data=None):
         self.rh.log("handle_get_seat_info()")
